@@ -1,0 +1,105 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat Neon</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Modal para nome -->
+<div id="modal-nome" class="modal">
+  <div class="modal-conteudo">
+    <h3>Bem-vindo ao Chat Neon!</h3>
+    <input type="text" id="nomeInput" placeholder="Digite seu nome" />
+    <button id="entrarBtn">Entrar</button>
+  </div>
+</div>
+
+<!-- Chat -->
+<div id="chat">
+  <h2>💬 Chat Público Neon</h2>
+  <div id="messages"></div>
+  <form id="form">
+    <input id="input" type="text" placeholder="Digite sua mensagem..." required />
+    <button id="send" type="submit">Enviar</button>
+  </form>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w",
+    authDomain: "chat-publico-742f8.firebaseapp.com",
+    databaseURL: "https://chat-publico-742f8-default-rtdb.firebaseio.com",
+    projectId: "chat-publico-742f8",
+    storageBucket: "chat-publico-742f8.firebasestorage.app",
+    messagingSenderId: "1002645903917",
+    appId: "1:1002645903917:web:9aa38a7b63b279fa2a36a4"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+  const mensagensRef = database.ref("mensagens");
+
+  const messagesDiv = document.getElementById('messages');
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+
+  const modal = document.getElementById('modal-nome');
+  const nomeInput = document.getElementById('nomeInput');
+  const entrarBtn = document.getElementById('entrarBtn');
+
+  let nome = sessionStorage.getItem('chat_nome');
+
+  function iniciarChat(nomeUsuario) {
+    sessionStorage.setItem('chat_nome', nomeUsuario);
+    nome = nomeUsuario;
+    modal.style.display = 'none';
+  }
+
+  if (!nome) {
+    modal.style.display = 'flex';
+
+    entrarBtn.addEventListener('click', () => {
+      const nomeDigitado = nomeInput.value.trim();
+      if (nomeDigitado) {
+        iniciarChat(nomeDigitado);
+      } else {
+        alert("Por favor, digite um nome.");
+      }
+    });
+
+    nomeInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        entrarBtn.click();
+      }
+    });
+  } else {
+    modal.style.display = 'none';
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const texto = input.value.trim();
+    if (texto && nome) {
+      mensagensRef.push({ nome, texto });
+      input.value = '';
+    }
+  });
+
+  mensagensRef.on('child_added', (snapshot) => {
+    const msg = snapshot.val();
+    const p = document.createElement('p');
+    p.innerHTML = `<strong>${msg.nome}:</strong> ${msg.texto}`;
+    messagesDiv.appendChild(p);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  });
+</script>
+
+</body>
+</html>
