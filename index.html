@@ -21,12 +21,28 @@
 <!-- Chat -->
 <div id="chat">
   <h2>💬 Chat 2.0</h2>
+  
+  <!-- Lista de usuários online -->
+  <div id="usuariosOnline"><strong>Online:</strong> <span id="listaUsuarios"></span></div>
+
   <div id="messages"></div>
+  <div id="digitando" class="digitando"></div>
+
   <form id="form">
     <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required />
     <button id="send" type="submit">Enviar</button>
+    <!-- Botão de Emoji -->
+    <button type="button" id="emojiBtn">😊</button>
   </form>
+
+  <!-- Emoji Picker -->
+  <div id="emojiPicker" class="emoji-picker" style="display: none;">
+    <!-- Emojis vão ser adicionados aqui -->
+  </div>
 </div>
+
+<!-- Som -->
+<audio id="notificacaoAudio" src="https://notificationsounds.com/storage/sounds/file-sounds-1156-pristine.mp3" preload="auto"></audio>
 
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -45,16 +61,12 @@
   };
 
   firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
-  const mensagensRef = database.ref("mensagens");
-  const entradasRef = database.ref("entradas");
-  const saidasRef = database.ref("saidas");
-  let messaging;
-  try {
-    messaging = firebase.messaging();
-  } catch (e) {
-    console.warn("Firebase Messaging não suportado neste ambiente:", e);
-  }
+  const db = firebase.database();
+  const mensagensRef = db.ref("mensagens");
+  const entradasRef = db.ref("entradas");
+  const saidasRef = db.ref("saidas");
+  const digitandoRef = db.ref("digitando");
+  const usuariosOnlineRef = db.ref("usuariosOnline");
 
   const messagesDiv = document.getElementById('messages');
   const form = document.getElementById('form');
@@ -62,37 +74,52 @@
   const modal = document.getElementById('modal-nome');
   const nomeInput = document.getElementById('nomeInput');
   const entrarBtn = document.getElementById('entrarBtn');
+  const digitandoDiv = document.getElementById('digitando');
+  const listaUsuarios = document.getElementById('listaUsuarios');
+  const notificacaoAudio = document.getElementById('notificacaoAudio');
+  const emojiBtn = document.getElementById('emojiBtn');
+  const emojiPicker = document.getElementById('emojiPicker');
 
   let nome = sessionStorage.getItem('chat_nome');
 
-  // Limpar mensagens antigas ao carregar a página
-  function limparChat() {
-    mensagensRef.remove();
-    entradasRef.remove();
-    saidasRef.remove();
-    messagesDiv.innerHTML = '';
-  }
+  // Emojis para o emoji picker
+  const emojis = ['😊', '😂', '😍', '😎', '😢', '😜', '😡', '😱', '👍', '👎'];
+  emojis.forEach(emoji => {
+    const button = document.createElement('button');
+    button.textContent = emoji;
+    button.addEventListener('click', () => {
+      input.value += emoji;
+      input.focus();
+    });
+    emojiPicker.appendChild(button);
+  });
 
-  // Executar limpeza ao carregar a página
+  // Mostrar/ocultar o emoji picker
+  emojiBtn.addEventListener('click', () => {
+    emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block';
+  });
+
   window.addEventListener('load', () => {
     if (!nome) {
       limparChat();
     }
   });
 
+  function limparChat() {
+    mensagensRef.remove();
+    entradasRef.remove();
+    saidasRef.remove();
+    digitandoRef.remove();
+    usuariosOnlineRef.remove();
+    messagesDiv.innerHTML = '';
+  }
+
   function iniciarChat(nomeUsuario) {
     sessionStorage.setItem('chat_nome', nomeUsuario);
     nome = nomeUsuario;
     modal.style.display = 'none';
-    entradasRef.push({ nome: nomeUsuario, timestamp: firebase.database.ServerValue.TIMESTAMP });
-    // Configurar notificações push
-    if (messaging) {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          console.log('Permissão para notificações concedida');
-        }
-      });
-    }
+    entradasRef.push({ nome, timestamp: Date.now() });
+    usuariosOnlineRef.child(nome).set(true);
   }
 
   if (!nome) {
@@ -100,27 +127,22 @@
 
     entrarBtn.addEventListener('click', () => {
       const nomeDigitado = nomeInput.value.trim();
-      if (nomeDigitado) {
-        iniciarChat(nomeDigitado);
-      } else {
-        alert("Por favor, digite um nome.");
-      }
+      if (nomeDigitado) iniciarChat(nomeDigitado);
+      else alert("Por favor, digite um nome.");
     });
 
     nomeInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        entrarBtn.click();
-      }
+      if (e.key === 'Enter') entrarBtn.click();
     });
   } else {
     modal.style.display = 'none';
-    entradasRef.push({ nome, timestamp: firebase.database.ServerValue.TIMESTAMP });
+    iniciarChat(nome);
   }
 
-  // Detectar saída (fechar aba ou recarregar)
   window.addEventListener('beforeunload', () => {
     if (nome) {
-      saidasRef.push({ nome, timestamp: firebase.database.ServerValue.TIMESTAMP });
+      saidasRef.push({ nome, timestamp: Date.now() });
+      usuariosOnlineRef.child(nome).remove();
       sessionStorage.removeItem('chat_nome');
     }
   });
@@ -129,56 +151,52 @@
     e.preventDefault();
     const texto = input.value.trim();
     if (texto && nome) {
-      mensagensRef.push({ nome, texto, timestamp: firebase.database.ServerValue.TIMESTAMP });
+      const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      mensagensRef.push({ nome, texto, hora });
       input.value = '';
-      // Enviar notificação push (se configurado)
-      if (messaging) {
-        console.log('Notificação enviada (simulada):', `${nome}: ${texto}`);
-      }
+      digitandoRef.child(nome).remove();
     }
   });
 
-  // Escutar mensagens normais
+  input.addEventListener('input', () => {
+    if (nome) {
+      digitandoRef.child(nome).set(true);
+      setTimeout(() => digitandoRef.child(nome).remove(), 3000);
+    }
+  });
+
   mensagensRef.on('child_added', (snapshot) => {
     const msg = snapshot.val();
     const p = document.createElement('p');
-    p.className = 'mensagem';
-    p.innerHTML = `<strong>${msg.nome}:</strong> ${msg.texto}`;
+    p.innerHTML = `<strong>${msg.nome}</strong> [${msg.hora}]: ${msg.texto}`;
     messagesDiv.appendChild(p);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    // Som apenas se a mensagem não for do próprio usuário
+    if (msg.nome !== nome) {
+      notificacaoAudio.play();
+    }
   });
 
-  // Escutar entradas
-  entradasRef.on('child_added', (snapshot) => {
-    const entrada = snapshot.val();
-    const p = document.createElement('p');
-    p.className = 'mensagem-sistema';
-    p.innerHTML = `<em>${entrada.nome} entrou no chat! 😊</em>`;
-    messagesDiv.appendChild(p);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  digitandoRef.on('value', snapshot => {
+    const digitandoUsuarios = snapshot.val();
+    if (digitandoUsuarios) {
+      const nomes = Object.keys(digitandoUsuarios).filter(n => n !== nome);
+      digitandoDiv.textContent = nomes.length > 0 ? `${nomes.join(', ')} está digitando...` : '';
+    } else {
+      digitandoDiv.textContent = '';
+    }
   });
 
-  // Escutar saídas
-  saidasRef.on('child_added', (snapshot) => {
-    const saida = snapshot.val();
-    const p = document.createElement('p');
-    p.className = 'mensagem-sistema';
-    p.innerHTML = `<em>${saida.nome} saiu do chat! 😢</em>`;
-    messagesDiv.appendChild(p);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  usuariosOnlineRef.on('value', snapshot => {
+    const online = snapshot.val();
+    if (online) {
+      const nomes = Object.keys(online).filter(n => n !== nome);
+      listaUsuarios.textContent = nomes.length ? nomes.join(', ') : 'só você 😊';
+    } else {
+      listaUsuarios.textContent = 'só você 😊';
+    }
   });
-
-  // Registro do Service Worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js').then(registration => {
-      console.log('Service Worker registrado:', registration);
-      if (messaging) {
-        messaging.useServiceWorker(registration);
-      }
-    }).catch(error => {
-      console.error('Erro ao registrar Service Worker:', error);
-    });
-  }
 </script>
 
 </body>
