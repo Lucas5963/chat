@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chat Neon</title>
+  <title>MEU CHAT</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="/manifest.json"> <!-- Link do Manifesto -->
+  <link rel="manifest" href="/manifest.json">
 </head>
 <body>
 
 <!-- Modal para nome -->
 <div id="modal-nome" class="modal">
   <div class="modal-conteudo">
-    <h3>Bem-vindo ao Chat Neon!</h3>
+    <h3>Bem-vindo ao CHAT</h3>
     <input type="text" id="nomeInput" placeholder="Digite seu nome" />
     <button id="entrarBtn">Entrar</button>
   </div>
@@ -20,7 +20,7 @@
 
 <!-- Chat -->
 <div id="chat">
-  <h2>💬 Chat Público Neon</h2>
+  <h2>💬 Chat 2.0</h2>
   <div id="messages"></div>
   <form id="form">
     <input id="input" type="text" placeholder="Digite sua mensagem..." required />
@@ -46,6 +46,7 @@
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
   const mensagensRef = database.ref("mensagens");
+  const entradasRef = database.ref("entradas"); // Nova referência para entradas
 
   const messagesDiv = document.getElementById('messages');
   const form = document.getElementById('form');
@@ -61,6 +62,8 @@
     sessionStorage.setItem('chat_nome', nomeUsuario);
     nome = nomeUsuario;
     modal.style.display = 'none';
+    // Enviar mensagem de entrada
+    entradasRef.push({ nome: nomeUsuario, timestamp: firebase.database.ServerValue.TIMESTAMP });
   }
 
   if (!nome) {
@@ -88,15 +91,27 @@
     e.preventDefault();
     const texto = input.value.trim();
     if (texto && nome) {
-      mensagensRef.push({ nome, texto });
+      mensagensRef.push({ nome, texto, timestamp: firebase.database.ServerValue.TIMESTAMP });
       input.value = '';
     }
   });
 
+  // Escutar mensagens normais
   mensagensRef.on('child_added', (snapshot) => {
     const msg = snapshot.val();
     const p = document.createElement('p');
+    p.className = 'mensagem';
     p.innerHTML = `<strong>${msg.nome}:</strong> ${msg.texto}`;
+    messagesDiv.appendChild(p);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  });
+
+  // Escutar mensagens de entrada
+  entradasRef.on('child_added', (snapshot) => {
+    const entrada = snapshot.val();
+    const p = document.createElement('p');
+    p.className = 'mensagem-sistema';
+    p.innerHTML = `<em>${entrada.nome} entrou no chat!</em>`;
     messagesDiv.appendChild(p);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
