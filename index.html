@@ -23,7 +23,7 @@
   <h2>💬 Chat 2.0</h2>
   <div id="messages"></div>
   <form id="form">
-    <input id="input" type="text" placeholder="Digite sua mensagem..." required />
+    <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required />
     <button id="send" type="submit">Enviar</button>
   </form>
 </div>
@@ -31,6 +31,7 @@
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
 
 <script>
   const firebaseConfig = {
@@ -46,24 +47,52 @@
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
   const mensagensRef = database.ref("mensagens");
-  const entradasRef = database.ref("entradas"); // Nova referência para entradas
+  const entradasRef = database.ref("entradas");
+  const saidasRef = database.ref("saidas");
+  let messaging;
+  try {
+    messaging = firebase.messaging();
+  } catch (e) {
+    console.warn("Firebase Messaging não suportado neste ambiente:", e);
+  }
 
   const messagesDiv = document.getElementById('messages');
   const form = document.getElementById('form');
   const input = document.getElementById('input');
-
   const modal = document.getElementById('modal-nome');
   const nomeInput = document.getElementById('nomeInput');
   const entrarBtn = document.getElementById('entrarBtn');
 
   let nome = sessionStorage.getItem('chat_nome');
 
+  // Limpar mensagens antigas ao carregar a página
+  function limparChat() {
+    mensagensRef.remove();
+    entradasRef.remove();
+    saidasRef.remove();
+    messagesDiv.innerHTML = '';
+  }
+
+  // Executar limpeza ao carregar a página
+  window.addEventListener('load', () => {
+    if (!nome) {
+      limparChat();
+    }
+  });
+
   function iniciarChat(nomeUsuario) {
     sessionStorage.setItem('chat_nome', nomeUsuario);
     nome = nomeUsuario;
     modal.style.display = 'none';
-    // Enviar mensagem de entrada
     entradasRef.push({ nome: nomeUsuario, timestamp: firebase.database.ServerValue.TIMESTAMP });
+    // Configurar notificações push
+    if (messaging) {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          console.log('Permissão para notificações concedida');
+        }
+      });
+    }
   }
 
   if (!nome) {
@@ -85,7 +114,16 @@
     });
   } else {
     modal.style.display = 'none';
+    entradasRef.push({ nome, timestamp: firebase.database.ServerValue.TIMESTAMP });
   }
+
+  // Detectar saída (fechar aba ou recarregar)
+  window.addEventListener('beforeunload', () => {
+    if (nome) {
+      saidasRef.push({ nome, timestamp: firebase.database.ServerValue.TIMESTAMP });
+      sessionStorage.removeItem('chat_nome');
+    }
+  });
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -93,6 +131,10 @@
     if (texto && nome) {
       mensagensRef.push({ nome, texto, timestamp: firebase.database.ServerValue.TIMESTAMP });
       input.value = '';
+      // Enviar notificação push (se configurado)
+      if (messaging) {
+        console.log('Notificação enviada (simulada):', `${nome}: ${texto}`);
+      }
     }
   });
 
@@ -106,22 +148,35 @@
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
 
-  // Escutar mensagens de entrada
+  // Escutar entradas
   entradasRef.on('child_added', (snapshot) => {
     const entrada = snapshot.val();
     const p = document.createElement('p');
     p.className = 'mensagem-sistema';
-    p.innerHTML = `<em>${entrada.nome} entrou no chat!</em>`;
+    p.innerHTML = `<em>${entrada.nome} entrou no chat! 😊</em>`;
+    messagesDiv.appendChild(p);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  });
+
+  // Escutar saídas
+  saidasRef.on('child_added', (snapshot) => {
+    const saida = snapshot.val();
+    const p = document.createElement('p');
+    p.className = 'mensagem-sistema';
+    p.innerHTML = `<em>${saida.nome} saiu do chat! 😢</em>`;
     messagesDiv.appendChild(p);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
 
   // Registro do Service Worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js').then(function(registration) {
-      console.log('Service Worker registrado com sucesso:', registration);
-    }).catch(function(error) {
-      console.log('Erro ao registrar o Service Worker:', error);
+    navigator.serviceWorker.register('/service-worker.js').then(registration => {
+      console.log('Service Worker registrado:', registration);
+      if (messaging) {
+        messaging.useServiceWorker(registration);
+      }
+    }).catch(error => {
+      console.error('Erro ao registrar Service Worker:', error);
     });
   }
 </script>
