@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chat Neon</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="/manifest.json"> <!-- Link do Manifesto -->
 </head>
 <body>
 
@@ -31,14 +32,13 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
-<!-- Script do Chat -->
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w",
     authDomain: "chat-publico-742f8.firebaseapp.com",
     databaseURL: "https://chat-publico-742f8-default-rtdb.firebaseio.com",
     projectId: "chat-publico-742f8",
-    storageBucket: "chat-publico-742f8.appspot.com",
+    storageBucket: "chat-publico-742f8.firebasestorage.app",
     messagingSenderId: "1002645903917",
     appId: "1:1002645903917:web:9aa38a7b63b279fa2a36a4"
   };
@@ -50,6 +50,7 @@
   const messagesDiv = document.getElementById('messages');
   const form = document.getElementById('form');
   const input = document.getElementById('input');
+
   const modal = document.getElementById('modal-nome');
   const nomeInput = document.getElementById('nomeInput');
   const entrarBtn = document.getElementById('entrarBtn');
@@ -60,9 +61,6 @@
     sessionStorage.setItem('chat_nome', nomeUsuario);
     nome = nomeUsuario;
     modal.style.display = 'none';
-
-    // Apaga todas as mensagens ao entrar
-    mensagensRef.remove();
   }
 
   if (!nome) {
@@ -98,12 +96,19 @@
   mensagensRef.on('child_added', (snapshot) => {
     const msg = snapshot.val();
     const p = document.createElement('p');
-    p.classList.add('mensagem');
-    p.classList.add(msg.nome === nome ? 'mensagem-propria' : 'mensagem-outro');
     p.innerHTML = `<strong>${msg.nome}:</strong> ${msg.texto}`;
     messagesDiv.appendChild(p);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
+
+  // Registro do Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').then(function(registration) {
+      console.log('Service Worker registrado com sucesso:', registration);
+    }).catch(function(error) {
+      console.log('Erro ao registrar o Service Worker:', error);
+    });
+  }
 </script>
 
 </body>
