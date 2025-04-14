@@ -13,8 +13,8 @@
 <div id="modal-nome" class="modal">
   <div class="modal-conteudo">
     <h3>Bem-vindo ao CHAT</h3>
-    <input type="text" id="nomeInput" placeholder="Digite seu nome" />
-    <button id="entrarBtn">Entrar</button>
+    <input type="text" id="nomeInput" placeholder="Digite seu nome" aria-label="Nome do usuário" />
+    <button id="entrarBtn" aria-label="Entrar no chat">Entrar</button>
   </div>
 </div>
 
@@ -29,16 +29,14 @@
   <div id="digitando" class="digitando"></div>
 
   <form id="form">
-    <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required />
-    <button id="send" type="submit">Enviar</button>
+    <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required aria-label="Digite sua mensagem" />
+    <button id="send" type="submit" aria-label="Enviar mensagem">Enviar</button>
     <!-- Botão de Emoji -->
-    <button type="button" id="emojiBtn">😊</button>
+    <button type="button" id="emojiBtn" aria-label="Abrir emojis">😊</button>
   </form>
 
   <!-- Emoji Picker -->
-  <div id="emojiPicker" class="emoji-picker" style="display: none;">
-    <!-- Emojis vão ser adicionados aqui -->
-  </div>
+  <div id="emojiPicker" class="emoji-picker" style="display: none;"></div>
 </div>
 
 <!-- Som -->
@@ -81,15 +79,20 @@
   const emojiPicker = document.getElementById('emojiPicker');
 
   let nome = sessionStorage.getItem('chat_nome');
+  let isTabActive = document.hasFocus();
+  let hasNewMessage = false;
+  const originalTitle = document.title;
 
   // Emojis para o emoji picker
-  const emojis = ['😊', '😂', '😍', '😎', '😢', '😜', '😡', '😱', '👍', '👎'];
+  const emojis = ['😊', '😂', '😍', '😎', '😢', '😜', '😡', '😱', '👍', '👎', '❤️', '🔥'];
   emojis.forEach(emoji => {
     const button = document.createElement('button');
     button.textContent = emoji;
+    button.classList.add('emoji');
     button.addEventListener('click', () => {
       input.value += emoji;
       input.focus();
+      emojiPicker.style.display = 'none';
     });
     emojiPicker.appendChild(button);
   });
@@ -97,6 +100,17 @@
   // Mostrar/ocultar o emoji picker
   emojiBtn.addEventListener('click', () => {
     emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block';
+  });
+
+  // Monitorar foco da aba
+  window.addEventListener('focus', () => {
+    isTabActive = true;
+    hasNewMessage = false;
+    document.title = originalTitle;
+  });
+
+  window.addEventListener('blur', () => {
+    isTabActive = false;
   });
 
   window.addEventListener('load', () => {
@@ -124,7 +138,6 @@
 
   if (!nome) {
     modal.style.display = 'flex';
-
     entrarBtn.addEventListener('click', () => {
       const nomeDigitado = nomeInput.value.trim();
       if (nomeDigitado) iniciarChat(nomeDigitado);
@@ -169,12 +182,17 @@
     const msg = snapshot.val();
     const p = document.createElement('p');
     p.innerHTML = `<strong>${msg.nome}</strong> [${msg.hora}]: ${msg.texto}`;
+    if (msg.nome === nome) {
+      p.classList.add('meu');
+    }
     messagesDiv.appendChild(p);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-    // Som apenas se a mensagem não for do próprio usuário
     if (msg.nome !== nome) {
       notificacaoAudio.play();
+      if (!isTabActive) {
+        hasNewMessage = true;
+        document.title = '(Nova!) ' + originalTitle;
+      }
     }
   });
 
