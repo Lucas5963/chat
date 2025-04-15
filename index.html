@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MEU CHAT</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="/manifest.json">
 </head>
 <body>
 
@@ -13,39 +12,43 @@
 <div id="modal-nome" class="modal">
   <div class="modal-conteudo">
     <h3>Bem-vindo ao CHAT</h3>
-    <input type="text" id="nomeInput" placeholder="Digite seu nome" aria-label="Nome do usuário" />
-    <button id="entrarBtn" aria-label="Entrar no chat">Entrar</button>
+    <input type="text" id="nomeInput" placeholder="Digite seu nome" />
+    <input type="text" id="avatarInput" placeholder="Link da sua foto (opcional)" />
+    <button id="entrarBtn">Entrar</button>
   </div>
 </div>
 
 <!-- Chat -->
 <div id="chat">
   <h2>💬 Chat 2.0</h2>
-  
-  <!-- Lista de usuários online -->
-  <div id="usuariosOnline"><strong>Online:</strong> <span id="listaUsuarios"></span></div>
 
+  <div>
+    <label for="salaSelect"><strong>Sala:</strong></label>
+    <select id="salaSelect">
+      <option value="geral">#geral</option>
+      <option value="suporte">#suporte</option>
+      <option value="aleatorio">#aleatório</option>
+    </select>
+  </div>
+
+  <div id="usuariosOnline"><strong>Online:</strong> <span id="listaUsuarios"></span></div>
   <div id="messages"></div>
   <div id="digitando" class="digitando"></div>
 
   <form id="form">
-    <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required aria-label="Digite sua mensagem" />
-    <button id="send" type="submit" aria-label="Enviar mensagem">Enviar</button>
-    <!-- Botão de Emoji -->
-    <button type="button" id="emojiBtn" aria-label="Abrir emojis">😊</button>
+    <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required />
+    <button id="send" type="submit">Enviar</button>
+    <button type="button" id="emojiBtn">😊</button>
   </form>
 
-  <!-- Emoji Picker -->
   <div id="emojiPicker" class="emoji-picker" style="display: none;"></div>
 </div>
 
-<!-- Som -->
 <audio id="notificacaoAudio" src="https://notificationsounds.com/storage/sounds/file-sounds-1156-pristine.mp3" preload="auto"></audio>
 
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
 
 <script>
   const firebaseConfig = {
@@ -53,37 +56,41 @@
     authDomain: "chat-publico-742f8.firebaseapp.com",
     databaseURL: "https://chat-publico-742f8-default-rtdb.firebaseio.com",
     projectId: "chat-publico-742f8",
-    storageBucket: "chat-publico-742f8.firebasestorage.app",
+    storageBucket: "chat-publico-742f8.appspot.com",
     messagingSenderId: "1002645903917",
     appId: "1:1002645903917:web:9aa38a7b63b279fa2a36a4"
   };
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-  const mensagensRef = db.ref("mensagens");
+
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+  const modal = document.getElementById('modal-nome');
+  const nomeInput = document.getElementById('nomeInput');
+  const avatarInput = document.getElementById('avatarInput');
+  const entrarBtn = document.getElementById('entrarBtn');
+  const digitandoDiv = document.getElementById('digitando');
+  const listaUsuarios = document.getElementById('listaUsuarios');
+  const messagesDiv = document.getElementById('messages');
+  const notificacaoAudio = document.getElementById('notificacaoAudio');
+  const emojiBtn = document.getElementById('emojiBtn');
+  const emojiPicker = document.getElementById('emojiPicker');
+  const salaSelect = document.getElementById('salaSelect');
+
+  let nome = sessionStorage.getItem('chat_nome');
+  let avatar = sessionStorage.getItem('chat_avatar');
+  let salaAtual = salaSelect.value;
+  let mensagensRef = db.ref(`mensagens/${salaAtual}`);
   const entradasRef = db.ref("entradas");
   const saidasRef = db.ref("saidas");
   const digitandoRef = db.ref("digitando");
   const usuariosOnlineRef = db.ref("usuariosOnline");
 
-  const messagesDiv = document.getElementById('messages');
-  const form = document.getElementById('form');
-  const input = document.getElementById('input');
-  const modal = document.getElementById('modal-nome');
-  const nomeInput = document.getElementById('nomeInput');
-  const entrarBtn = document.getElementById('entrarBtn');
-  const digitandoDiv = document.getElementById('digitando');
-  const listaUsuarios = document.getElementById('listaUsuarios');
-  const notificacaoAudio = document.getElementById('notificacaoAudio');
-  const emojiBtn = document.getElementById('emojiBtn');
-  const emojiPicker = document.getElementById('emojiPicker');
-
-  let nome = sessionStorage.getItem('chat_nome');
   let isTabActive = document.hasFocus();
-  let hasNewMessage = false;
   const originalTitle = document.title;
 
-  // Emojis para o emoji picker
+  // Emojis
   const emojis = ['😊', '😂', '😍', '😎', '😢', '😜', '😡', '😱', '👍', '👎', '❤️', '🔥'];
   emojis.forEach(emoji => {
     const button = document.createElement('button');
@@ -97,15 +104,12 @@
     emojiPicker.appendChild(button);
   });
 
-  // Mostrar/ocultar o emoji picker
   emojiBtn.addEventListener('click', () => {
     emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block';
   });
 
-  // Monitorar foco da aba
   window.addEventListener('focus', () => {
     isTabActive = true;
-    hasNewMessage = false;
     document.title = originalTitle;
   });
 
@@ -113,24 +117,11 @@
     isTabActive = false;
   });
 
-  window.addEventListener('load', () => {
-    if (!nome) {
-      limparChat();
-    }
-  });
-
-  function limparChat() {
-    mensagensRef.remove();
-    entradasRef.remove();
-    saidasRef.remove();
-    digitandoRef.remove();
-    usuariosOnlineRef.remove();
-    messagesDiv.innerHTML = '';
-  }
-
-  function iniciarChat(nomeUsuario) {
-    sessionStorage.setItem('chat_nome', nomeUsuario);
+  function iniciarChat(nomeUsuario, avatarUrl) {
     nome = nomeUsuario;
+    avatar = avatarUrl || '';
+    sessionStorage.setItem('chat_nome', nome);
+    sessionStorage.setItem('chat_avatar', avatar);
     modal.style.display = 'none';
     entradasRef.push({ nome, timestamp: Date.now() });
     usuariosOnlineRef.child(nome).set(true);
@@ -140,16 +131,13 @@
     modal.style.display = 'flex';
     entrarBtn.addEventListener('click', () => {
       const nomeDigitado = nomeInput.value.trim();
-      if (nomeDigitado) iniciarChat(nomeDigitado);
+      const avatarUrl = avatarInput.value.trim();
+      if (nomeDigitado) iniciarChat(nomeDigitado, avatarUrl);
       else alert("Por favor, digite um nome.");
-    });
-
-    nomeInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') entrarBtn.click();
     });
   } else {
     modal.style.display = 'none';
-    iniciarChat(nome);
+    iniciarChat(nome, avatar);
   }
 
   window.addEventListener('beforeunload', () => {
@@ -157,42 +145,88 @@
       saidasRef.push({ nome, timestamp: Date.now() });
       usuariosOnlineRef.child(nome).remove();
       sessionStorage.removeItem('chat_nome');
+      sessionStorage.removeItem('chat_avatar');
     }
   });
+
+  salaSelect.addEventListener('change', () => {
+    salaAtual = salaSelect.value;
+    mensagensRef.off();
+    messagesDiv.innerHTML = '';
+    mensagensRef = db.ref(`mensagens/${salaAtual}`);
+    mensagensRef.on('child_added', exibirMensagem);
+  });
+
+  function exibirMensagem(snapshot) {
+    const msg = snapshot.val();
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('mensagem');
+    if (msg.nome === nome) msgDiv.classList.add('meu');
+
+    const avatarImg = document.createElement('img');
+    avatarImg.src = msg.avatar || 'https://i.imgur.com/placeholder.png';
+    avatarImg.alt = msg.nome;
+    avatarImg.classList.add('avatar');
+
+    const conteudo = document.createElement('div');
+    conteudo.innerHTML = `<strong>${msg.nome}</strong> [${msg.hora}]: ${msg.texto}`;
+
+    msgDiv.appendChild(avatarImg);
+    msgDiv.appendChild(conteudo);
+    messagesDiv.appendChild(msgDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    if (msg.nome !== nome) {
+      notificacaoAudio.play();
+      if (!isTabActive) {
+        document.title = '(Nova!) ' + originalTitle;
+      }
+    }
+  }
+
+  mensagensRef.on('child_added', exibirMensagem);
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const texto = input.value.trim();
-    if (texto && nome) {
-      const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      mensagensRef.push({ nome, texto, hora });
+    const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (texto.startsWith('/')) {
+      tratarComando(texto);
+    } else if (texto && nome) {
+      mensagensRef.push({ nome, texto, hora, avatar });
       input.value = '';
       digitandoRef.child(nome).remove();
     }
   });
 
+  function tratarComando(cmd) {
+    const comando = cmd.toLowerCase();
+    if (comando === '/limpar') {
+      messagesDiv.innerHTML = '';
+    } else if (comando === '/apagar') {
+      mensagensRef.remove();
+      messagesDiv.innerHTML = '';
+    } else if (comando === '/ajuda') {
+      const ajuda = document.createElement('p');
+      ajuda.innerHTML = `
+        <em>Comandos disponíveis:</em><br>
+        <strong>/limpar</strong> – Limpa o chat local<br>
+        <strong>/apagar</strong> – Apaga todas as mensagens da sala<br>
+        <strong>/ajuda</strong> – Mostra esta mensagem<br>
+      `;
+      messagesDiv.appendChild(ajuda);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } else {
+      alert("Comando não reconhecido.");
+    }
+    input.value = '';
+  }
+
   input.addEventListener('input', () => {
     if (nome) {
       digitandoRef.child(nome).set(true);
       setTimeout(() => digitandoRef.child(nome).remove(), 3000);
-    }
-  });
-
-  mensagensRef.on('child_added', (snapshot) => {
-    const msg = snapshot.val();
-    const p = document.createElement('p');
-    p.innerHTML = `<strong>${msg.nome}</strong> [${msg.hora}]: ${msg.texto}`;
-    if (msg.nome === nome) {
-      p.classList.add('meu');
-    }
-    messagesDiv.appendChild(p);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    if (msg.nome !== nome) {
-      notificacaoAudio.play();
-      if (!isTabActive) {
-        hasNewMessage = true;
-        document.title = '(Nova!) ' + originalTitle;
-      }
     }
   });
 
