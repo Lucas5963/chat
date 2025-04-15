@@ -27,11 +27,27 @@ body {
 }
 
 #usuariosOnline {
+  position: relative;
   background: #111;
-  padding: 5px 10px;
-  border-radius: 5px;
+  padding: 8px 12px;
+  border-radius: 8px;
   margin-bottom: 10px;
   font-size: 14px;
+  display: inline-block;
+  cursor: pointer;
+  color: #00ffc3;
+  border: 1px solid #00ffc3;
+  transition: all 0.3s ease-in-out;
+}
+
+#usuariosOnline::before {
+  content: '?? ';
+  margin-right: 5px;
+}
+
+#usuariosOnline:hover {
+  background: #222;
+  box-shadow: 0 0 8px #00ffc3;
 }
 
 #messages {
@@ -47,30 +63,42 @@ body {
   margin: 5px 0;
   padding: 8px 12px;
   border-radius: 10px;
-  max-width: 70%; /* Reduzido para evitar balões muito largos */
+  max-width: 70%;
   font-size: 14px;
-  line-height: 1.4; /* Melhora a legibilidade */
-  overflow-wrap: break-word; /* Garante quebra de palavras longas */
-  word-break: break-word; /* Compatibilidade para quebra de texto */
-  white-space: pre-wrap; /* Preserva quebras de linha digitadas */
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 #messages p strong {
   color: #ff00ff;
 }
 
-/* Mensagens de outros */
+/* Mensagem de outros usuários */
 #messages p {
   background: #333;
   color: #00ffc3;
   margin-right: 10%;
 }
 
-/* Mensagens do usuário atual */
+/* Mensagem do próprio usuário */
 #messages p.meu {
   background: #00bfa6;
   margin-left: 10%;
   text-align: right;
+}
+
+/* Mensagem do sistema */
+#messages p.sistema {
+  background: transparent;
+  color: #888;
+  text-align: center;
+  font-style: italic;
+  font-size: 13px;
+  padding: 0;
+  margin: 8px 0;
+  border: none;
 }
 
 #form {
@@ -93,7 +121,8 @@ body {
   box-shadow: 0 0 10px #00ffc3;
 }
 
-#send, #emojiBtn {
+#send,
+#emojiBtn {
   background: #00ffc3;
   color: #111;
   border: none;
@@ -109,7 +138,8 @@ body {
   font-size: 16px;
 }
 
-#send:hover, #emojiBtn:hover {
+#send:hover,
+#emojiBtn:hover {
   background: #00bfa6;
   box-shadow: 0 0 12px #00ffc3;
 }
@@ -228,32 +258,159 @@ body {
   box-shadow: 0 0 12px #00ffc3;
 }
 
-/* Responsividade */
+/* Popover */
+.popover-nomes {
+  display: none;
+  position: absolute;
+  top: 110%;
+  left: 0;
+  background-color: #1a1a1a;
+  border: 1px solid #00ffc3;
+  border-radius: 8px;
+  padding: 10px;
+  z-index: 20;
+  width: max-content;
+  box-shadow: 0 0 10px #00ffc3;
+  font-size: 13px;
+  white-space: nowrap;
+}
+#usuariosOnline {
+  position: relative;
+  background: #111;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  display: inline-block;
+  cursor: pointer;
+  color: #00ffc3;
+  border: 1px solid #00ffc3;
+  transition: all 0.3s ease-in-out;
+}
+
+#usuariosOnline::before {
+  content: '?? ';
+  margin-right: 5px;
+}
+
+#usuariosOnline:hover {
+  background: #222;
+  box-shadow: 0 0 8px #00ffc3;
+}
+
+/* Popover para mostrar usuários online */
+.popover-nomes {
+  display: none;
+  position: absolute;
+  top: 110%;
+  left: 0;
+  background-color: #1a1a1a;
+  border: 1px solid #00ffc3;
+  border-radius: 8px;
+  padding: 10px;
+  z-index: 20;
+  width: max-content;
+  box-shadow: 0 0 10px #00ffc3;
+  font-size: 13px;
+  white-space: nowrap;
+}
+#usuariosOnline {
+  position: relative;
+  background: #111;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  display: inline-block;
+  cursor: pointer;
+  color: #00ffc3;
+  border: 1px solid #00ffc3;
+  transition: all 0.3s ease-in-out;
+}
+
+#usuariosOnline::before {
+  content: '?? ';
+  margin-right: 5px;
+}
+
+#usuariosOnline:hover {
+  background: #222;
+  box-shadow: 0 0 8px #00ffc3;
+}
+
+/* Popover para mostrar usuários online */
+.popover-nomes {
+  display: none;
+  position: absolute;
+  top: 110%;
+  left: 0;
+  background-color: #1a1a1a;
+  border: 1px solid #00ffc3;
+  border-radius: 8px;
+  padding: 10px;
+  z-index: 20;
+  width: max-content;
+  box-shadow: 0 0 10px #00ffc3;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+#usuariosOnline:hover .popover-nomes {
+  display: block;
+}
+
+/* Nome de usuários online */
+.popover-nomes span {
+  display: block;
+  padding: 4px 0;
+  color: #00ffc3;
+}
+
+/* Ícone de usuário online */
+.popover-nomes span::before {
+  content: '?? ';
+  margin-right: 4px;
+}
+
+/* Responsividade: ajustando a posição e comportamento */
 @media (max-width: 600px) {
-  #chat {
-    padding: 10px;
-  }
-
-  #messages {
-    height: 250px;
-  }
-
-  #messages p {
-    max-width: 85%; /* Um pouco mais largo em telas pequenas */
-  }
-
-  #input, #send, #emojiBtn {
+  #usuariosOnline {
     font-size: 12px;
-    padding: 6px;
+    padding: 6px 10px;
   }
 
-  .modal-conteudo {
-    padding: 15px;
-    max-width: 300px;
-  }
-
-  .emoji-picker {
-    grid-template-columns: repeat(4, 1fr);
-    max-height: 120px;
+  .popover-nomes {
+    max-width: 200px; /* Para garantir que não ultrapasse a largura da tela */
   }
 }
+.popover-nomes span::before {
+  content: '';
+  width: 10px;  /* Tamanho do círculo */
+  height: 10px; /* Tamanho do círculo */
+  border-radius: 50%; /* Faz o elemento ser redondo */
+  background-color: #00bfa6; /* Cor verde */
+  margin-right: 6px; /* Espaçamento entre o círculo e o nome */
+  display: inline-block; /* Para que o círculo apareça ao lado do texto */
+}
+.mensagem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.mensagem.meu {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.mensagem img.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #00ffc3;
+  box-shadow: 0 0 5px #00ffc3;
+}
+
+
