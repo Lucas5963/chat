@@ -7,249 +7,300 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- Modal para nome -->
-<div id="modal-nome" class="modal">
-  <div class="modal-conteudo">
-    <h3>Bem-vindo ao CHAT</h3>
-    <input type="text" id="nomeInput" placeholder="Digite seu nome" />
-    <input type="text" id="avatarInput" placeholder="Link da sua foto (opcional)" />
-    <button id="entrarBtn">Entrar</button>
-  </div>
-</div>
-
-<!-- Chat -->
-<div id="chat">
-  <h2>💬 Chat 2.0</h2>
-
-  <div>
-    <label for="salaSelect"><strong>Sala:</strong></label>
-    <select id="salaSelect">
-      <option value="geral">#geral</option>
-      <option value="suporte">#suporte</option>
-      <option value="aleatorio">#aleatório</option>
-    </select>
+  <div id="consentBanner" style="display: none;">
+    <p>Este site coleta seu nome e avatar para o chat. Concorda com o uso desses dados?</p>
+    <button onclick="aceitarConsentimento()">Aceitar</button>
   </div>
 
-  <div id="usuariosOnline"><strong>Online:</strong> <span id="listaUsuarios"></span></div>
-  <div id="messages"></div>
-  <div id="digitando" class="digitando"></div>
+  <div id="modal-nome" class="modal">
+    <div class="modal-conteudo">
+      <h3>Bem-vindo ao CHAT</h3>
+      <input type="text" id="nomeInput" placeholder="Digite seu nome" />
+      <input type="text" id="avatarInput" placeholder="Link da sua foto (opcional)" />
+      <button id="entrarBtn">Entrar</button>
+    </div>
+  </div>
 
-  <form id="form">
-    <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required />
-    <button id="send" type="submit">Enviar</button>
-    <button type="button" id="emojiBtn">😊</button>
-  </form>
+  <div id="chat">
+    <h2>💬 Chat 2.0</h2>
+    <div class="sala-container">
+      <strong>Sala:</strong>
+      <label for="salaSelect" class="sr-only">Selecione uma sala de chat</label>
+      <select id="salaSelect" aria-describedby="salaSelectHelp">
+        <option value="geral">Geral</option>
+        <option value="suporte">Sala Exclusiva 1</option>
+        <option value="aleatorio">Sala Exclusiva 2</option>
+      </select>
+      <span id="salaSelectHelp" class="sr-only">Escolha uma sala para conversar</span>
+    </div>
+    <div id="usuariosOnline"><strong>Online:</strong> <span id="listaUsuarios"></span></div>
+    <div id="messages"></div>
+    <div id="digitando" class="digitando"></div>
+    <form id="form">
+      <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required />
+      <button id="send" type="submit">Enviar</button>
+      <button type="button" id="emojiBtn">😊</button>
+    </form>
+    <div id="emojiPicker" class="emoji-picker" style="display: none;"></div>
+  </div>
 
-  <div id="emojiPicker" class="emoji-picker" style="display: none;"></div>
-</div>
+  <audio id="notificacaoAudio" src="https://notificationsounds.com/storage/sounds/file-sounds-1156-pristine.mp3" preload="auto"></audio>
 
-<audio id="notificacaoAudio" src="https://notificationsounds.com/storage/sounds/file-sounds-1156-pristine.mp3" preload="auto"></audio>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w",
+      authDomain: "chat-publico-742f8.firebaseapp.com",
+      databaseURL: "https://chat-publico-742f8-default-rtdb.firebaseio.com",
+      projectId: "chat-publico-742f8",
+      storageBucket: "chat-publico-742f8.appspot.com",
+      messagingSenderId: "1002645903917",
+      appId: "1:1002645903917:web:9aa38a7b63b279fa2a36a4"
+    };
 
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w",
-    authDomain: "chat-publico-742f8.firebaseapp.com",
-    databaseURL: "https://chat-publico-742f8-default-rtdb.firebaseio.com",
-    projectId: "chat-publico-742f8",
-    storageBucket: "chat-publico-742f8.appspot.com",
-    messagingSenderId: "1002645903917",
-    appId: "1:1002645903917:web:9aa38a7b63b279fa2a36a4"
-  };
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const modal = document.getElementById('modal-nome');
+    const nomeInput = document.getElementById('nomeInput');
+    const avatarInput = document.getElementById('avatarInput');
+    const entrarBtn = document.getElementById('entrarBtn');
+    const digitandoDiv = document.getElementById('digitando');
+    const listaUsuarios = document.getElementById('listaUsuarios');
+    const messagesDiv = document.getElementById('messages');
+    const notificacaoAudio = document.getElementById('notificacaoAudio');
+    const emojiBtn = document.getElementById('emojiBtn');
+    const emojiPicker = document.getElementById('emojiPicker');
+    const salaSelect = document.getElementById('salaSelect');
+    const usuariosOnline = document.getElementById('usuariosOnline');
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+    let nome = sessionStorage.getItem('chat_nome');
+    let avatar = sessionStorage.getItem('chat_avatar');
+    let salaAtual = salaSelect.value;
+    let mensagensRef = db.ref(`mensagens/${salaAtual}`);
+    const entradasRef = db.ref("entradas");
+    const saidasRef = db.ref("saidas");
+    const digitandoRef = db.ref("digitando");
+    const usuariosOnlineRef = db.ref("usuariosOnline");
 
-  const form = document.getElementById('form');
-  const input = document.getElementById('input');
-  const modal = document.getElementById('modal-nome');
-  const nomeInput = document.getElementById('nomeInput');
-  const avatarInput = document.getElementById('avatarInput');
-  const entrarBtn = document.getElementById('entrarBtn');
-  const digitandoDiv = document.getElementById('digitando');
-  const listaUsuarios = document.getElementById('listaUsuarios');
-  const messagesDiv = document.getElementById('messages');
-  const notificacaoAudio = document.getElementById('notificacaoAudio');
-  const emojiBtn = document.getElementById('emojiBtn');
-  const emojiPicker = document.getElementById('emojiPicker');
-  const salaSelect = document.getElementById('salaSelect');
+    let isTabActive = document.hasFocus();
+    const originalTitle = document.title;
 
-  let nome = sessionStorage.getItem('chat_nome');
-  let avatar = sessionStorage.getItem('chat_avatar');
-  let salaAtual = salaSelect.value;
-  let mensagensRef = db.ref(`mensagens/${salaAtual}`);
-  const entradasRef = db.ref("entradas");
-  const saidasRef = db.ref("saidas");
-  const digitandoRef = db.ref("digitando");
-  const usuariosOnlineRef = db.ref("usuariosOnline");
+    const popover = document.createElement('div');
+    popover.classList.add('popover-nomes');
+    usuariosOnline.appendChild(popover);
 
-  let isTabActive = document.hasFocus();
-  const originalTitle = document.title;
-
-  // Emojis
-  const emojis = ['😊', '😂', '😍', '😎', '😢', '😜', '😡', '😱', '👍', '👎', '❤️', '🔥'];
-  emojis.forEach(emoji => {
-    const button = document.createElement('button');
-    button.textContent = emoji;
-    button.classList.add('emoji');
-    button.addEventListener('click', () => {
-      input.value += emoji;
-      input.focus();
-      emojiPicker.style.display = 'none';
-    });
-    emojiPicker.appendChild(button);
-  });
-
-  emojiBtn.addEventListener('click', () => {
-    emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block';
-  });
-
-  window.addEventListener('focus', () => {
-    isTabActive = true;
-    document.title = originalTitle;
-  });
-
-  window.addEventListener('blur', () => {
-    isTabActive = false;
-  });
-
-  function iniciarChat(nomeUsuario, avatarUrl) {
-    nome = nomeUsuario;
-    avatar = avatarUrl || '';
-    sessionStorage.setItem('chat_nome', nome);
-    sessionStorage.setItem('chat_avatar', avatar);
-    modal.style.display = 'none';
-    entradasRef.push({ nome, timestamp: Date.now() });
-    usuariosOnlineRef.child(nome).set(true);
-  }
-
-  if (!nome) {
-    modal.style.display = 'flex';
-    entrarBtn.addEventListener('click', () => {
-      const nomeDigitado = nomeInput.value.trim();
-      const avatarUrl = avatarInput.value.trim();
-      if (nomeDigitado) iniciarChat(nomeDigitado, avatarUrl);
-      else alert("Por favor, digite um nome.");
-    });
-  } else {
-    modal.style.display = 'none';
-    iniciarChat(nome, avatar);
-  }
-
-  window.addEventListener('beforeunload', () => {
-    if (nome) {
-      saidasRef.push({ nome, timestamp: Date.now() });
-      usuariosOnlineRef.child(nome).remove();
-      sessionStorage.removeItem('chat_nome');
-      sessionStorage.removeItem('chat_avatar');
+    function sanitizar(texto) {
+      const div = document.createElement('div');
+      div.textContent = texto;
+      return div.innerHTML;
     }
-  });
 
-  salaSelect.addEventListener('change', () => {
-    salaAtual = salaSelect.value;
-    mensagensRef.off();
-    messagesDiv.innerHTML = '';
-    mensagensRef = db.ref(`mensagens/${salaAtual}`);
-    mensagensRef.on('child_added', exibirMensagem);
-  });
+    function formatarMarkdown(texto) {
+      return texto
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    }
 
-  function exibirMensagem(snapshot) {
-    const msg = snapshot.val();
-    const msgDiv = document.createElement('div');
-    msgDiv.classList.add('mensagem');
-    if (msg.nome === nome) msgDiv.classList.add('meu');
+    function aceitarConsentimento() {
+      localStorage.setItem('consentimento', 'true');
+      document.getElementById('consentBanner').style.display = 'none';
+    }
+    if (!localStorage.getItem('consentimento')) {
+      document.getElementById('consentBanner').style.display = 'block';
+    }
 
-    const avatarImg = document.createElement('img');
-    avatarImg.src = msg.avatar || 'https://i.imgur.com/placeholder.png';
-    avatarImg.alt = msg.nome;
-    avatarImg.classList.add('avatar');
+    const emojis = ['😊', '😂', '😍', '😎', '😢', '😜', '😡', '😱', '👍', '👎', '❤️', '🔥'];
+    emojis.forEach(emoji => {
+      const button = document.createElement('button');
+      button.textContent = emoji;
+      button.classList.add('emoji');
+      button.addEventListener('click', () => {
+        input.value += emoji;
+        input.focus();
+        emojiPicker.style.display = 'none';
+      });
+      emojiPicker.appendChild(button);
+    });
 
-    const conteudo = document.createElement('div');
-    conteudo.innerHTML = `<strong>${msg.nome}</strong> [${msg.hora}]: ${msg.texto}`;
+    emojiBtn.addEventListener('click', () => {
+      emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block';
+    });
 
-    msgDiv.appendChild(avatarImg);
-    msgDiv.appendChild(conteudo);
-    messagesDiv.appendChild(msgDiv);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    usuariosOnline.addEventListener('click', () => {
+      popover.style.display = popover.style.display === 'block' ? 'none' : 'block';
+    });
 
-    if (msg.nome !== nome) {
-      notificacaoAudio.play();
-      if (!isTabActive) {
-        document.title = '(Nova!) ' + originalTitle;
+    window.addEventListener('focus', () => {
+      isTabActive = true;
+      document.title = originalTitle;
+    });
+
+    window.addEventListener('blur', () => {
+      isTabActive = false;
+    });
+
+    function iniciarChat(nomeUsuario, avatarUrl) {
+      nome = nomeUsuario;
+      avatar = avatarUrl || '';
+      sessionStorage.setItem('chat_nome', nome);
+      sessionStorage.setItem('chat_avatar', avatar);
+      modal.style.display = 'none';
+      entradasRef.push({ nome, timestamp: Date.now() });
+      usuariosOnlineRef.child(nome).set(true);
+    }
+
+    if (!nome) {
+      modal.style.display = 'flex';
+      entrarBtn.addEventListener('click', () => {
+        const nomeDigitado = nomeInput.value.trim();
+        const avatarUrl = avatarInput.value.trim();
+        if (nomeDigitado) iniciarChat(nomeDigitado, avatarUrl);
+        else alert("Por favor, digite um nome.");
+      });
+    } else {
+      modal.style.display = 'none';
+      iniciarChat(nome, avatar);
+    }
+
+    window.addEventListener('beforeunload', () => {
+      if (nome) {
+        saidasRef.push({ nome, timestamp: Date.now() });
+        usuariosOnlineRef.child(nome).remove();
+        sessionStorage.removeItem('chat_nome');
+        sessionStorage.removeItem('chat_avatar');
+      }
+    });
+
+    salaSelect.addEventListener('change', () => {
+      salaAtual = salaSelect.value;
+      mensagensRef.off();
+      messagesDiv.innerHTML = '';
+      mensagensRef = db.ref(`mensagens/${salaAtual}`);
+      mensagensRef.limitToLast(50).on('child_added', exibirMensagem);
+    });
+
+    function exibirMensagem(snapshot) {
+      const msg = snapshot.val();
+      const msgDiv = document.createElement('div');
+      msgDiv.classList.add('mensagem');
+      if (msg.nome === nome) msgDiv.classList.add('meu');
+
+      const avatarImg = document.createElement('img');
+      avatarImg.src = msg.avatar || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#333"/><path d="M16 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM16 20c-4 0-8 2-8 4h16c0-2-4-4-8-4z" fill="#00ffc3"/></svg>';
+      avatarImg.alt = `Avatar de ${msg.nome}`;
+      avatarImg.classList.add('avatar');
+
+      const conteudo = document.createElement('div');
+      conteudo.classList.add('conteudo');
+      conteudo.innerHTML = `<strong>${msg.nome}</strong> [${msg.hora}]: ${formatarMarkdown(sanitizar(msg.texto))}`;
+
+      msgDiv.appendChild(avatarImg);
+      msgDiv.appendChild(conteudo);
+      messagesDiv.appendChild(msgDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      if (msg.nome !== nome) {
+        notificacaoAudio.play();
+        if (!isTabActive) {
+          document.title = '(Nova!) ' + originalTitle;
+        }
       }
     }
-  }
 
-  mensagensRef.on('child_added', exibirMensagem);
+    mensagensRef.limitToLast(50).on('child_added', exibirMensagem);
 
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const texto = input.value.trim();
-    const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    if (texto.startsWith('/')) {
-      tratarComando(texto);
-    } else if (texto && nome) {
-      mensagensRef.push({ nome, texto, hora, avatar });
-      input.value = '';
-      digitandoRef.child(nome).remove();
-    }
-  });
-
-  function tratarComando(cmd) {
-    const comando = cmd.toLowerCase();
-    if (comando === '/limpar') {
-      messagesDiv.innerHTML = '';
-    } else if (comando === '/apagar') {
-      mensagensRef.remove();
-      messagesDiv.innerHTML = '';
-    } else if (comando === '/ajuda') {
-      const ajuda = document.createElement('p');
-      ajuda.innerHTML = `
-        <em>Comandos disponíveis:</em><br>
-        <strong>/limpar</strong> – Limpa o chat local<br>
-        <strong>/apagar</strong> – Apaga todas as mensagens da sala<br>
-        <strong>/ajuda</strong> – Mostra esta mensagem<br>
-      `;
-      messagesDiv.appendChild(ajuda);
+    entradasRef.on('child_added', snapshot => {
+      const entrada = snapshot.val();
+      const msgDiv = document.createElement('div');
+      msgDiv.classList.add('mensagem', 'sistema');
+      msgDiv.innerHTML = `<em>${entrada.nome} entrou no chat!</em>`;
+      messagesDiv.appendChild(msgDiv);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    } else {
-      alert("Comando não reconhecido.");
-    }
-    input.value = '';
-  }
+    });
 
-  input.addEventListener('input', () => {
-    if (nome) {
-      digitandoRef.child(nome).set(true);
-      setTimeout(() => digitandoRef.child(nome).remove(), 3000);
-    }
-  });
+    saidasRef.on('child_added', snapshot => {
+      const saida = snapshot.val();
+      const msgDiv = document.createElement('div');
+      msgDiv.classList.add('mensagem', 'sistema');
+      msgDiv.innerHTML = `<em>${saida.nome} saiu do chat.</em>`;
+      messagesDiv.appendChild(msgDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
 
-  digitandoRef.on('value', snapshot => {
-    const digitandoUsuarios = snapshot.val();
-    if (digitandoUsuarios) {
-      const nomes = Object.keys(digitandoUsuarios).filter(n => n !== nome);
-      digitandoDiv.textContent = nomes.length > 0 ? `${nomes.join(', ')} está digitando...` : '';
-    } else {
-      digitandoDiv.textContent = '';
-    }
-  });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const texto = input.value.trim();
+      const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  usuariosOnlineRef.on('value', snapshot => {
-    const online = snapshot.val();
-    if (online) {
-      const nomes = Object.keys(online).filter(n => n !== nome);
-      listaUsuarios.textContent = nomes.length ? nomes.join(', ') : 'só você 😊';
-    } else {
-      listaUsuarios.textContent = 'só você 😊';
-    }
-  });
-</script>
+      if (texto.length > 500) {
+        alert("Mensagem muito longa! Máximo 500 caracteres.");
+        return;
+      }
 
+      if (texto.startsWith('/')) {
+        tratarComando(texto);
+      } else if (texto && nome) {
+        mensagensRef.push({ nome, texto: sanitizar(texto), hora, avatar });
+        input.value = '';
+        digitandoRef.child(nome).remove();
+      }
+    });
+
+    function tratarComando(cmd) {
+      const comando = cmd.toLowerCase();
+      if (comando === '/limpar') {
+        messagesDiv.innerHTML = '';
+      } else if (comando === '/apagar') {
+        mensagensRef.remove();
+        messagesDiv.innerHTML = '';
+      } else if (comando === '/ajuda') {
+        const ajuda = document.createElement('p');
+        ajuda.innerHTML = `
+          <em>Comandos disponíveis:</em><br>
+          <strong>/limpar</strong> – Limpa o chat local<br>
+          <strong>/apagar</strong> – Apaga todas as mensagens da sala<br>
+          <strong>/ajuda</strong> – Mostra esta mensagem<br>
+        `;
+        messagesDiv.appendChild(ajuda);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      } else {
+        alert("Comando não reconhecido.");
+      }
+      input.value = '';
+    }
+
+    input.addEventListener('input', () => {
+      if (nome) {
+        digitandoRef.child(nome).set(true);
+        setTimeout(() => digitandoRef.child(nome).remove(), 3000);
+      }
+    });
+
+    digitandoRef.on('value', snapshot => {
+      const digitandoUsuarios = snapshot.val();
+      if (digitandoUsuarios) {
+        const nomes = Object.keys(digitandoUsuarios).filter(n => n !== nome);
+        digitandoDiv.textContent = nomes.length > 0 ? `${nomes.join(', ')} está digitando...` : '';
+      } else {
+        digitandoDiv.textContent = '';
+      }
+    });
+
+    usuariosOnlineRef.on('value', snapshot => {
+      const online = snapshot.val();
+      if (online) {
+        const nomes = Object.keys(online).filter(n => n !== nome);
+        listaUsuarios.textContent = nomes.length ? nomes.join(', ') : 'só você 😊';
+        popover.innerHTML = nomes.map(n => `<span>${n}</span>`).join('') || '<span>só você 😊</span>';
+      } else {
+        listaUsuarios.textContent = 'só você 😊';
+        popover.innerHTML = '<span>só você 😊</span>';
+      }
+    });
+  </script>
 </body>
 </html>
