@@ -1,5 +1,5 @@
 const firebaseConfig = {
-  apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w", // Substitua pela chave correta do Firebase Console
+  apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w", // **REMOVER EM PRODUÇÃO**
   authDomain: "chat-publico-742f8.firebaseapp.com",
   databaseURL: "https://chat-publico-742f8-default-rtdb.firebaseio.com",
   projectId: "chat-publico-742f8",
@@ -34,19 +34,22 @@ const emojiPicker = document.getElementById('emojiPicker');
 const salaSelect = document.getElementById('salaSelect');
 const usuariosOnline = document.getElementById('usuariosOnline');
 const chatDiv = document.getElementById('chat');
+const temaBtn = document.getElementById('temaBtn');
 
 let user = null;
 let salaAtual = salaSelect.value;
 let mensagensRef = db.ref(`mensagens/${salaAtual}`);
+let digitandoRef = db.ref(`digitando/${salaAtual}`);
 const usuariosOnlineRef = db.ref("usuariosOnline");
 
-// Criar o popover para os usuários online
 const popover = document.createElement('div');
 popover.classList.add('popover-nomes');
 usuariosOnline.appendChild(popover);
 
 let isTabActive = document.hasFocus();
 const originalTitle = document.title;
+let typingRef = null;
+let typingTimeout;
 
 function sanitizar(texto) {
   const div = document.createElement('div');
@@ -90,10 +93,16 @@ window.addEventListener('blur', () => {
 });
 
 toggleSenhaBtn.addEventListener('click', () => {
-  const isPasswordVisible = senhaInput.type === 'password';
-  senhaInput.type = isPasswordVisible ? 'text' : 'password';
-  toggleSenhaBtn.textContent = isPasswordVisible ? '🙈' : '👁️';
+  const isPasswordVisible = senhaInput.type === 'text';
+  senhaInput.type = isPasswordVisible ? 'password' : 'text';
+
+  const icone = document.getElementById('iconeOlho');
+  icone.src = isPasswordVisible
+    ? 'https://cdn-icons-png.flaticon.com/128/2767/2767146.png' // olho fechado
+    : 'https://cdn-icons-png.flaticon.com/512/709/709612.png';   // olho aberto
+  icone.alt = isPasswordVisible ? 'Mostrar senha' : 'Ocultar senha';
 });
+
 
 auth.onAuthStateChanged(currentUser => {
   if (currentUser) {
@@ -102,14 +111,11 @@ auth.onAuthStateChanged(currentUser => {
       sessionStorage.setItem('chat_uid', user.uid);
       sessionStorage.setItem('chat_email', user.email);
       sessionStorage.setItem('chat_nome', nome);
-      // Carregar o avatar salvo, se existir
       const savedAvatar = sessionStorage.getItem('chat_avatar') || '';
       avatarInput.value = savedAvatar;
       modal.style.display = 'none';
       chatDiv.style.display = 'block';
-      usuariosOnlineRef.child(user.uid).set({
-          nome: nome
-      });
+      usuariosOnlineRef.child(user.uid).set({ nome });
       carregarMensagens();
   } else {
       user = null;
@@ -127,57 +133,62 @@ loginBtn.addEventListener('click', () => {
   const email = emailInput.value.trim();
   const senha = senhaInput.value.trim();
   const nome = nomeInput.value.trim();
-  if (email && senha && nome) {
-      auth.signInWithEmailAndPassword(email, senha)
-          .then(() => {
-              alert('Login bem-sucedido!');
-          })
-          .catch(error => {
-              if (error.code === 'auth/invalid-login-credentials') {
-                  alert('Email ou senha incorretos. Verifique suas credenciais ou clique em "Esqueci minha senha".');
-              } else {
-                  alert('Erro ao logar: ' + error.message);
-              }
-          });
-  } else {
+  if (!email || !senha || !nome) {
       alert('Por favor, preencha email, senha e nome.');
+      return;
   }
+  auth.signInWithEmailAndPassword(email, senha)
+      .then(() => alert('Login bem-sucedido!'))
+      .catch(error => {
+          switch (error.code) {
+              case 'auth/user-not-found':
+              case 'auth/wrong-password':
+                  alert('Email ou senha incorretos. Verifique suas credenciais ou clique em "Esqueci minha senha".');
+                  break;
+              case 'auth/invalid-email':
+                  alert('Email inválido. Por favor, insira um email válido.');
+                  break;
+              default:
+                  alert(`Erro ao logar: ${error.message}`);
+          }
+      });
 });
 
 registerBtn.addEventListener('click', () => {
   const email = emailInput.value.trim();
   const senha = senhaInput.value.trim();
   const nome = nomeInput.value.trim();
-  if (email && senha && nome) {
-      auth.createUserWithEmailAndPassword(email, senha)
-          .then(() => {
-              alert('Registro bem-sucedido! Você está logado.');
-          })
-          .catch(error => {
-              if (error.code === 'auth/email-already-in-use') {
-                  alert('Este email já está em uso. Tente outro email ou faça login.');
-              } else {
-                  alert('Erro ao registrar: ' + error.message);
-              }
-          });
-  } else {
+  if (!email || !senha || !nome) {
       alert('Por favor, preencha email, senha e nome.');
+      return;
   }
+  auth.createUserWithEmailAndPassword(email, senha)
+      .then(() => alert('Registro bem-sucedido! Você está logado.'))
+      .catch(error => {
+          switch (error.code) {
+              case 'auth/email-already-in-use':
+                  alert('Este email já está em uso. Tente outro email ou faça login.');
+              case 'auth/weak-password':
+                  alert('Senha fraca. A senha deve ter pelo menos 6 caracteres.');
+                  break;
+              case 'auth/invalid-email':
+                  alert('Email inválido. Por favor, insira um email válido.');
+                  break;
+              default:
+                  alert(`Erro ao registrar: ${error.message}`);
+          }
+      });
 });
 
 resetSenhaBtn.addEventListener('click', () => {
   const email = emailInput.value.trim();
-  if (email) {
-      auth.sendPasswordResetEmail(email)
-          .then(() => {
-              alert('Email de redefinição de senha enviado! Verifique sua caixa de entrada.');
-          })
-          .catch(error => {
-              alert('Erro ao enviar email de redefinição: ' + error.message);
-          });
-  } else {
+  if (!email) {
       alert('Por favor, insira um email.');
+      return;
   }
+  auth.sendPasswordResetEmail(email)
+      .then(() => alert('Email de redefinição de senha enviado! Verifique sua caixa de entrada.'))
+      .catch(error => alert(`Erro ao enviar email de redefinição: ${error.message}`));
 });
 
 logoutBtn.addEventListener('click', () => {
@@ -188,54 +199,75 @@ logoutBtn.addEventListener('click', () => {
 });
 
 window.addEventListener('beforeunload', () => {
-  if (user) {
-      usuariosOnlineRef.child(user.uid).remove();
-  }
+  if (user) usuariosOnlineRef.child(user.uid).remove();
 });
 
 updateAvatarBtn.addEventListener('click', () => {
   const avatarLink = avatarInput.value.trim();
-  sessionStorage.setItem('chat_avatar', avatarLink);
-  alert('Foto atualizada com sucesso!');
-  messagesDiv.innerHTML = '';
-  carregarMensagens();
+  if (avatarLink) {
+      const img = new Image();
+      img.onload = () => {
+          sessionStorage.setItem('chat_avatar', avatarLink);
+          alert('Foto atualizada com sucesso!');
+          messagesDiv.innerHTML = '';
+          carregarMensagens();
+      };
+      img.onerror = () => alert('URL inválida. Por favor, insira uma URL de imagem válida.');
+      img.src = avatarLink;
+  } else {
+      sessionStorage.setItem('chat_avatar', '');
+      alert('Foto removida com sucesso!');
+      messagesDiv.innerHTML = '';
+      carregarMensagens();
+  }
 });
 
 salaSelect.addEventListener('change', () => {
   salaAtual = salaSelect.value;
   mensagensRef.off();
+  typingRef?.remove();
   messagesDiv.innerHTML = '';
   mensagensRef = db.ref(`mensagens/${salaAtual}`);
+  digitandoRef.off();
+  digitandoRef = db.ref(`digitando/${salaAtual}`);
+  digitandoRef.on('value', snapshot => {
+      const digitando = snapshot.val();
+      const nomes = digitando
+          ? Object.keys(digitando)
+              .filter(uid => uid !== user?.uid)
+              .map(uid => digitando[uid])
+              .filter(nome => nome)
+          : [];
+      digitandoDiv.textContent = nomes.length ? `${nomes.join(', ')} está digitando...` : '';
+  });
   carregarMensagens();
 });
 
 function exibirMensagem(snapshot) {
   const msg = snapshot.val();
-  if (msg.uid === user.uid || !msg.uid) {
-      const msgDiv = document.createElement('div');
-      msgDiv.classList.add('mensagem');
-      if (msg.uid === user.uid) msgDiv.classList.add('meu');
+  if (!msg) return;
 
-      const avatarImg = document.createElement('img');
-      avatarImg.src = msg.avatar || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#333"/><path d="M16 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM16 20c-4 0-8 2-8 4h16c0-2-4-4-8-4z" fill="#05fa05"/></svg>';
-      avatarImg.alt = `Avatar de ${msg.nome || 'Usuário'}`;
-      avatarImg.classList.add('avatar');
+  const msgDiv = document.createElement('div');
+  msgDiv.classList.add('mensagem');
+  if (msg.uid === user?.uid) msgDiv.classList.add('meu');
 
-      const conteudo = document.createElement('div');
-      conteudo.classList.add('conteudo');
-      conteudo.innerHTML = `<strong>${msg.nome || 'Usuário'}</strong> [${msg.hora}]: ${sanitizar(msg.texto)}`;
+  const avatarImg = document.createElement('img');
+  avatarImg.src = msg.avatar || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#333"/><path d="M16 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM16 20c-4 0-8 2-8 4h16c0-2-4-4-8-4z" fill="#05fa05"/></svg>';
+  avatarImg.alt = `Avatar de ${msg.nome || 'Usuário'}`;
+  avatarImg.classList.add('avatar');
 
-      msgDiv.appendChild(avatarImg);
-      msgDiv.appendChild(conteudo);
-      messagesDiv.appendChild(msgDiv);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  const conteudo = document.createElement('div');
+  conteudo.classList.add('conteudo');
+  conteudo.innerHTML = `<strong>${msg.nome || 'Usuário'}</strong> [${msg.hora}]: ${sanitizar(msg.texto)}`;
 
-      if (msg.uid !== user.uid) {
-          notificacaoAudio.play();
-          if (!isTabActive) {
-              document.title = '(Nova!) ' + originalTitle;
-          }
-      }
+  msgDiv.appendChild(avatarImg);
+  msgDiv.appendChild(conteudo);
+  messagesDiv.appendChild(msgDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+  if (msg.uid !== user?.uid) {
+      notificacaoAudio.play();
+      if (!isTabActive) document.title = '(Nova!) ' + originalTitle;
   }
 }
 
@@ -249,7 +281,7 @@ form.addEventListener('submit', e => {
   const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   if (texto.length > 500) {
-      alert("Mensagem muito longa! Máximo 500 caracteres.");
+      alert('Mensagem muito longa! Máximo 500 caracteres.');
       return;
   }
 
@@ -271,13 +303,46 @@ usuariosOnline.addEventListener('click', () => {
 
 usuariosOnlineRef.on('value', snapshot => {
   const online = snapshot.val();
-  if (online) {
-      const uids = Object.keys(online).filter(uid => uid !== user?.uid);
-      const nomes = uids.map(uid => online[uid].nome).filter(nome => nome);
-      listaUsuarios.textContent = nomes.length ? nomes.join(', ') : 'só você 😊';
-      popover.innerHTML = nomes.length ? nomes.map(nome => `<span>${nome}</span>`).join('') : '<span>só você 😊</span>';
-  } else {
-      listaUsuarios.textContent = 'só você 😊';
-      popover.innerHTML = '<span>só você 😊</span>';
-  }
+  const nomes = online
+      ? Object.keys(online)
+          .filter(uid => uid !== user?.uid)
+          .map(uid => online[uid].nome)
+          .filter(nome => nome)
+      : [];
+  listaUsuarios.textContent = nomes.length ? nomes.join(', ') : 'só você 😊';
+  popover.innerHTML = nomes.length ? nomes.map(nome => `<span>${nome}</span>`).join('') : '<span>só você 😊</span>';
 });
+
+function atualizarDigitando() {
+  if (!user) return;
+  clearTimeout(typingTimeout);
+  typingRef?.remove();
+  typingRef = db.ref(`digitando/${salaAtual}/${user.uid}`);
+  typingRef.set(sessionStorage.getItem('chat_nome'));
+  typingTimeout = setTimeout(() => typingRef.remove(), 3000);
+}
+
+input.addEventListener('input', atualizarDigitando);
+
+function aplicarTema(tema) {
+  if (tema === 'claro') {
+      document.documentElement.style.setProperty('--fundo-escuro', '#f9f9f9');
+      document.documentElement.style.setProperty('--cor-primaria', '#222');
+      document.documentElement.style.setProperty('--cor-secundaria', '#555');
+      document.body.style.color = '#222';
+  } else {
+      document.documentElement.style.setProperty('--fundo-escuro', '#1a1a1a');
+      document.documentElement.style.setProperty('--cor-primaria', '#05fa05');
+      document.documentElement.style.setProperty('--cor-secundaria', '#3cff00');
+      document.body.style.color = '#05fa05';
+  }
+  localStorage.setItem('tema', tema);
+}
+
+temaBtn.addEventListener('click', () => {
+  const atual = localStorage.getItem('tema') || 'escuro';
+  const novo = atual === 'escuro' ? 'claro' : 'escuro';
+  aplicarTema(novo);
+});
+
+aplicarTema(localStorage.getItem('tema') || 'escuro');
