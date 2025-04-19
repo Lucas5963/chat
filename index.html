@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MEU CHAT</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="consentBanner" style="display: none;">
+    <p>Este site coleta seu email para autenticação. Concorda com o uso desses dados?</p>
+    <button onclick="aceitarConsentimento()">Aceitar</button>
+  </div>
+
+  <div id="modal-nome" class="modal">
+    <div class="modal-conteudo">
+      <h3>Bem-vindo ao CHAT</h3>
+      <input type="email" id="emailInput" placeholder="Digite seu email" />
+      <div class="password-container">
+        <input type="password" id="senhaInput" placeholder="Digite sua senha" />
+        <button type="button" id="toggleSenhaBtn" class="toggle-senha">👁️</button>
+      </div>
+      <input type="text" id="nomeInput" placeholder="Digite seu nome" required />
+      <button id="loginBtn">Entrar</button>
+      <button id="registerBtn">Registrar</button>
+      <button id="resetSenhaBtn">Esqueci minha senha</button>
+    </div>
+  </div>
+
+  <div id="chat" style="display: none;">
+    <h2>💬 Chat 2.0</h2>
+    <div class="sala-container">
+      <strong>Sala:</strong>
+      <label for="salaSelect" class="sr-only">Selecione uma sala de chat</label>
+      <select id="salaSelect" aria-describedby="salaSelectHelp">
+        <option value="geral">Geral</option>
+        <option value="suporte">Sala Exclusiva 1</option>
+        <option value="aleatorio">Sala Exclusiva 2</option>
+      </select>
+      <span id="salaSelectHelp" class="sr-only">Escolha uma sala para conversar</span>
+    </div>
+    <div id="usuariosOnline"><strong>Online:</strong> <span id="listaUsuarios"></span></div>
+    <button id="logoutBtn">Sair</button>
+    <div class="avatar-container">
+      <input type="text" id="avatarInput" placeholder="Link da sua foto (opcional)" />
+      <button id="updateAvatarBtn">Atualizar Foto</button>
+    </div>
+    <div id="messages"></div>
+    <div id="digitando" class="digitando"></div>
+    <form id="form">
+      <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required />
+      <button id="send" type="submit">Enviar</button>
+      <button type="button" id="emojiBtn">😊</button>
+    </form>
+    <div id="emojiPicker" class="emoji-picker" style="display: none;"></div>
+  </div>
+
+  <audio id="notificacaoAudio" src="https://notificationsounds.com/storage/sounds/file-sounds-1156-pristine.mp3" preload="auto"></audio>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
