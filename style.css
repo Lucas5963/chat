@@ -404,3 +404,14 @@ body {
     max-width: 300px;
   }
 }
+.icone-senha {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.icone-senha img {
+  width: 24px;
+  height: 24px;
+}
