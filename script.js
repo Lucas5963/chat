@@ -496,3 +496,5 @@ if (msg.audioUrl) {
   audioElement.controls = true;
   conteudo.appendChild(audioElement);
 }
+audioBtn.classList.add('gravando');  // enquanto grava
+audioBtn.classList.remove('gravando');  // depois que parar
