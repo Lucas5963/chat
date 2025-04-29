@@ -29,8 +29,6 @@ const emailInput = document.getElementById('emailInput');
 const senhaInput = document.getElementById('senhaInput');
 const toggleSenhaBtn = document.getElementById('toggleSenhaBtn');
 const nomeInput = document.getElementById('nomeInput');
-const avatarInput = document.getElementById('avatarInput');
-const updateAvatarBtn = document.getElementById('updateAvatarBtn');
 const loginBtn = document.getElementById('loginBtn');
 const registerBtn = document.getElementById('registerBtn');
 const resetSenhaBtn = document.getElementById('resetSenhaBtn');
@@ -121,8 +119,6 @@ auth.onAuthStateChanged(currentUser => {
       sessionStorage.setItem('chat_uid', user.uid);
       sessionStorage.setItem('chat_email', user.email);
       sessionStorage.setItem('chat_nome', nome);
-      const savedAvatar = sessionStorage.getItem('chat_avatar') || '';
-      avatarInput.value = savedAvatar;
       modal.style.display = 'none';
       chatDiv.style.display = 'block';
       usuariosOnlineRef.child(user.uid).set({ nome });
@@ -133,7 +129,6 @@ auth.onAuthStateChanged(currentUser => {
       sessionStorage.removeItem('chat_uid');
       sessionStorage.removeItem('chat_email');
       sessionStorage.removeItem('chat_nome');
-      sessionStorage.removeItem('chat_avatar');
       modal.style.display = 'flex';
       chatDiv.style.display = 'none';
       messagesDiv.innerHTML = '';
@@ -253,26 +248,6 @@ window.addEventListener('beforeunload', () => {
   if (user) usuariosOnlineRef.child(user.uid).remove();
 });
 
-updateAvatarBtn.addEventListener('click', () => {
-  const avatarLink = avatarInput.value.trim();
-  if (avatarLink) {
-      const img = new Image();
-      img.onload = () => {
-          sessionStorage.setItem('chat_avatar', avatarLink);
-          alert('Foto atualizada com sucesso!');
-          messagesDiv.innerHTML = '';
-          carregarMensagens();
-      };
-      img.onerror = () => alert('URL inválida. Por favor, insira uma URL de imagem válida.');
-      img.src = avatarLink;
-  } else {
-      sessionStorage.setItem('chat_avatar', '');
-      alert('Foto removida com sucesso!');
-      messagesDiv.innerHTML = '';
-      carregarMensagens();
-  }
-});
-
 salaSelect.addEventListener('change', () => {
   salaAtual = salaSelect.value;
   mensagensRef.off();
@@ -294,36 +269,121 @@ salaSelect.addEventListener('change', () => {
   carregarMensagens();
 });
 
-function exibirMensagem(snapshot) {
+function exibirMensagem(snapshot, isUpdate = false) {
   const msg = snapshot.val();
   if (!msg) return;
 
-  const msgDiv = document.createElement('div');
+  const msgKey = snapshot.key;
+  const msgDiv = isUpdate ? document.querySelector(`.mensagem[data-key="${msgKey}"]`) : document.createElement('div');
+  if (!msgDiv) return;
+
   msgDiv.classList.add('mensagem');
+  msgDiv.setAttribute('data-key', msgKey);
   if (msg.uid === user?.uid) msgDiv.classList.add('meu');
 
-  const avatarImg = document.createElement('img');
-  avatarImg.src = msg.avatar || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#333"/><path d="M16 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM16 20c-4 0-8 2-8 4h16c0-2-4-4-8-4z" fill="#006AFF"/></svg>';
-  avatarImg.alt = `Avatar de ${msg.nome || 'Usuário'}`;
-  avatarImg.classList.add('avatar');
+  if (!isUpdate) {
+    const avatarImg = document.createElement('img');
+    avatarImg.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#333"/><path d="M16 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM16 20c-4 0-8 2-8 4h16c0-2-4-4-8-4z" fill="#006AFF"/></svg>';
+    avatarImg.alt = `Avatar de ${msg.nome || 'Usuário'}`;
+    avatarImg.classList.add('avatar');
 
-  const conteudo = document.createElement('div');
-  conteudo.classList.add('conteudo');
-  conteudo.innerHTML = `<strong>${msg.nome || 'Usuário'}</strong> [${msg.hora}]: ${sanitizar(msg.texto)}`;
+    const conteudo = document.createElement('div');
+    conteudo.classList.add('conteudo');
+    conteudo.innerHTML = `<strong>${msg.nome || 'Usuário'}</strong> [${msg.hora}]: ${sanitizar(msg.texto)}`;
 
-  msgDiv.appendChild(avatarImg);
-  msgDiv.appendChild(conteudo);
-  messagesDiv.appendChild(msgDiv);
+    msgDiv.appendChild(avatarImg);
+    msgDiv.appendChild(conteudo);
+
+    if (msg.uid === user?.uid) {
+      const botoesAcao = document.createElement('div');
+      botoesAcao.classList.add('botoes-acao');
+
+      const editarBtn = document.createElement('button');
+      editarBtn.textContent = 'Editar';
+      editarBtn.classList.add('editar-btn');
+      editarBtn.addEventListener('click', () => iniciarEdicao(msgDiv, msgKey, msg.texto));
+
+      const apagarBtn = document.createElement('button');
+      apagarBtn.textContent = 'Apagar';
+      apagarBtn.classList.add('apagar-btn');
+      apagarBtn.addEventListener('click', () => apagarMensagem(msgKey));
+
+      botoesAcao.appendChild(editarBtn);
+      botoesAcao.appendChild(apagarBtn);
+      conteudo.appendChild(botoesAcao);
+    }
+
+    messagesDiv.appendChild(msgDiv);
+  } else {
+    const conteudo = msgDiv.querySelector('.conteudo');
+    conteudo.innerHTML = `<strong>${msg.nome || 'Usuário'}</strong> [${msg.hora}]: ${sanitizar(msg.texto)}`;
+    if (msg.uid === user?.uid) {
+      const botoesAcao = conteudo.querySelector('.botoes-acao') || document.createElement('div');
+      botoesAcao.classList.add('botoes-acao');
+      botoesAcao.innerHTML = `
+        <button class="editar-btn" onclick="iniciarEdicao(this.closest('.mensagem'), '${msgKey}', '${msg.texto.replace(/'/g, "\\'")}')">Editar</button>
+        <button class="apagar-btn" onclick="apagarMensagem('${msgKey}')">Apagar</button>
+      `;
+      conteudo.appendChild(botoesAcao);
+    }
+  }
+
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-  if (msg.uid !== user?.uid) {
-      notificacaoAudio.play();
-      if (!isTabActive) document.title = '(Nova!) ' + originalTitle;
+  if (!isUpdate && msg.uid !== user?.uid) {
+    notificacaoAudio.play();
+    if (!isTabActive) document.title = '(Nova!) ' + originalTitle;
+  }
+}
+
+function iniciarEdicao(msgDiv, msgKey, textoAtual) {
+  const conteudo = msgDiv.querySelector('.conteudo');
+  const textoSanitizado = sanitizar(textoAtual);
+  conteudo.innerHTML = `
+    <input type="text" class="editar-input" value="${textoSanitizado}" maxlength="500">
+  `;
+  const inputEdicao = conteudo.querySelector('.editar-input');
+  inputEdicao.focus();
+
+  inputEdicao.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      const novoTexto = inputEdicao.value.trim();
+      if (novoTexto) {
+        mensagensRef.child(msgKey).update({
+          texto: sanitizar(novoTexto),
+          hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }).then(() => {
+          console.log('Mensagem editada:', msgKey);
+        }).catch(error => {
+          console.error('Erro ao editar mensagem:', error);
+          alert('Erro ao editar mensagem.');
+        });
+      }
+    }
+  });
+}
+
+function apagarMensagem(msgKey) {
+  if (confirm('Tem certeza que deseja apagar esta mensagem?')) {
+    mensagensRef.child(msgKey).remove()
+      .then(() => {
+        console.log('Mensagem apagada:', msgKey);
+      })
+      .catch(error => {
+        console.error('Erro ao apagar mensagem:', error);
+        alert('Erro ao apagar mensagem.');
+      });
   }
 }
 
 function carregarMensagens() {
-  mensagensRef.limitToLast(50).on('child_added', exibirMensagem);
+  mensagensRef.limitToLast(50).on('child_added', snapshot => exibirMensagem(snapshot));
+  mensagensRef.on('child_changed', snapshot => exibirMensagem(snapshot, true));
+  mensagensRef.on('child_removed', snapshot => {
+    const msgKey = snapshot.key;
+    const msgDiv = document.querySelector(`.mensagem[data-key="${msgKey}"]`);
+    if (msgDiv) msgDiv.remove();
+  });
 }
 
 form.addEventListener('submit', e => {
@@ -341,8 +401,7 @@ form.addEventListener('submit', e => {
           uid: user.uid,
           nome: sessionStorage.getItem('chat_nome'),
           texto: sanitizar(texto),
-          hora,
-          avatar: sessionStorage.getItem('chat_avatar') || ''
+          hora
       });
       input.value = '';
   }
