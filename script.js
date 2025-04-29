@@ -28,7 +28,6 @@ const modal = document.getElementById('modal-nome');
 const emailInput = document.getElementById('emailInput');
 const senhaInput = document.getElementById('senhaInput');
 const toggleSenhaBtn = document.getElementById('toggleSenhaBtn');
-const nomeInput = document.getElementById('nomeInput');
 const loginBtn = document.getElementById('loginBtn');
 const registerBtn = document.getElementById('registerBtn');
 const resetSenhaBtn = document.getElementById('resetSenhaBtn');
@@ -115,7 +114,8 @@ auth.onAuthStateChanged(currentUser => {
   console.log('Estado de autenticação alterado:', currentUser);
   if (currentUser) {
       user = currentUser;
-      const nome = nomeInput.value.trim() || 'Usuário';
+      const emailPrefix = user.email.split('@')[0];
+      const nome = `Usuário ${emailPrefix}`;
       sessionStorage.setItem('chat_uid', user.uid);
       sessionStorage.setItem('chat_email', user.email);
       sessionStorage.setItem('chat_nome', nome);
@@ -139,14 +139,12 @@ auth.onAuthStateChanged(currentUser => {
 loginBtn.addEventListener('click', () => {
   console.log('Botão de login clicado:', {
     email: emailInput.value,
-    senha: senhaInput.value,
-    nome: nomeInput.value
+    senha: senhaInput.value
   });
   const email = emailInput.value.trim();
   const senha = senhaInput.value.trim();
-  const nome = nomeInput.value.trim();
-  if (!email || !senha || !nome) {
-      alert('Por favor, preencha email, senha e nome.');
+  if (!email || !senha) {
+      alert('Por favor, preencha email e senha.');
       console.log('Campos obrigatórios não preenchidos.');
       return;
   }
@@ -178,14 +176,12 @@ loginBtn.addEventListener('click', () => {
 registerBtn.addEventListener('click', () => {
   console.log('Botão de registro clicado:', {
     email: emailInput.value,
-    senha: senhaInput.value,
-    nome: nomeInput.value
+    senha: senhaInput.value
   });
   const email = emailInput.value.trim();
   const senha = senhaInput.value.trim();
-  const nome = nomeInput.value.trim();
-  if (!email || !senha || !nome) {
-      alert('Por favor, preencha email, senha e nome.');
+  if (!email || !senha) {
+      alert('Por favor, preencha email e senha.');
       console.log('Campos obrigatórios não preenchidos.');
       return;
   }
@@ -283,7 +279,7 @@ function exibirMensagem(snapshot, isUpdate = false) {
 
   if (!isUpdate) {
     const avatarImg = document.createElement('img');
-    avatarImg.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#333"/><path d="M16 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM16 20c-4 0-8 2-8 4h16c0-2-4-4-8-4z" fill="#006AFF"/></svg>';
+    avatarImg.src = 'https://placeholder.com/user-icon.png'; // Substitua por URL real da nova imagem
     avatarImg.alt = `Avatar de ${msg.nome || 'Usuário'}`;
     avatarImg.classList.add('avatar');
 
