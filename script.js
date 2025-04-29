@@ -115,7 +115,7 @@ auth.onAuthStateChanged(currentUser => {
   if (currentUser) {
       user = currentUser;
       const emailPrefix = user.email.split('@')[0];
-      const nome = `Usuário ${emailPrefix}`;
+      const nome = `👤 ${emailPrefix}`;
       sessionStorage.setItem('chat_uid', user.uid);
       sessionStorage.setItem('chat_email', user.email);
       sessionStorage.setItem('chat_nome', nome);
@@ -274,7 +274,7 @@ function exibirMensagem(snapshot, isUpdate = false) {
 
   if (!isUpdate) {
     const avatarImg = document.createElement('img');
-    avatarImg.src = 'https://placeholder.com/user-icon.png'; // Substitua por URL real da nova imagem
+    avatarImg.src = 'https://cdn-icons-png.flaticon.com/512/6073/6073873.png'; // Substitua por URL real da nova imagem
     avatarImg.alt = `Avatar de ${msg.nome || 'Usuário'}`;
     avatarImg.classList.add('avatar');
 
@@ -453,3 +453,46 @@ temaBtn.addEventListener('click', () => {
 });
 
 aplicarTema(localStorage.getItem('tema') || 'escuro');
+let mediaRecorder;
+let audioChunks = [];
+
+const audioBtn = document.getElementById('audioBtn');
+
+audioBtn.addEventListener('click', async () => {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = event => {
+      audioChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // 💡 Para produção: envie para o Firebase Storage e salve o link no Realtime Database
+      mensagensRef.push({
+        uid: user.uid,
+        nome: sessionStorage.getItem('chat_nome'),
+        texto: '',
+        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        audioUrl
+      });
+    };
+
+    mediaRecorder.start();
+    audioBtn.textContent = '🔴 Gravando...';
+    setTimeout(() => {
+      mediaRecorder.stop();
+      audioBtn.textContent = '🎤';
+    }, 5000000); // grava até 5 segundos
+  }
+});
+if (msg.audioUrl) {
+  const audioElement = document.createElement('audio');
+  audioElement.src = msg.audioUrl;
+  audioElement.controls = true;
+  conteudo.appendChild(audioElement);
+}
