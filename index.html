@@ -6,7 +6,7 @@
   <title>MEU CHAT</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="facebook-theme">
   <div id="consentBanner" style="display: none;">
     <p>Este site coleta seu email para autenticação. Concorda com o uso desses dados?</p>
     <button onclick="aceitarConsentimento()">Aceitar</button>
@@ -21,7 +21,6 @@
         <button id="toggleSenhaBtn" type="button" class="icone-senha">
           <img id="iconeOlho" src="https://cdn-icons-png.flaticon.com/512/709/709612.png" alt="Mostrar senha" />
         </button>
-        
       </div>
       <input type="text" id="nomeInput" placeholder="Digite seu nome" required />
       <button id="loginBtn">Entrar</button>
@@ -32,14 +31,16 @@
 
   <div id="chat" style="display: none;">
     <h2>💬 Chat 2.0</h2>
-    <div class="sala-container">
-      <strong>Sala:</strong>
-      <label for="salaSelect" class="sr-only">Selecione uma sala de chat</label>
-      <select id="salaSelect" aria-describedby="salaSelectHelp">
-        <option value="geral">Geral</option>
-        <option value="suporte">Sala Exclusiva 1</option>
-        <option value="aleatorio">Sala Exclusiva 2</option>
-      </select>
+    <div class="sala-container" data-theme="escuro">
+      <div class="select-wrapper">
+        <strong>Sala:</strong>
+        <label for="salaSelect" class="sr-only">Selecione uma sala de chat</label>
+        <select id="salaSelect" aria-describedby="salaSelectHelp">
+          <option value="geral">Geral</option>
+          <option value="suporte">Sala Exclusiva 1</option>
+          <option value="aleatorio">Sala Exclusiva 2</option>
+        </select>
+      </div>
       <span id="salaSelectHelp" class="sr-only">Escolha uma sala para conversar</span>
     </div>
     <div id="usuariosOnline"><strong>Online:</strong> <span id="listaUsuarios"></span></div>
@@ -61,9 +62,9 @@
 
   <audio id="notificacaoAudio" src="https://notificationsounds.com/storage/sounds/file-sounds-1156-pristine.mp3" preload="auto"></audio>
 
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
