@@ -487,7 +487,7 @@ audioBtn.addEventListener('click', async () => {
     setTimeout(() => {
       mediaRecorder.stop();
       audioBtn.textContent = '🎤';
-    }, 5000000); // grava até 5 segundos
+    }, 5000); // grava até 5 segundos
   }
 });
 if (msg.audioUrl) {
