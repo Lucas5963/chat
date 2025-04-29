@@ -121,14 +121,12 @@ auth.onAuthStateChanged(currentUser => {
       sessionStorage.setItem('chat_nome', nome);
       modal.style.display = 'none';
       chatDiv.style.display = 'block';
-      usuariosOnlineRef.child(user.uid).set({ nome });
+      usuariosOnlineRef.child(user.uid).set({ nome: nome });
       carregarMensagens();
       console.log('Usuário logado:', user.email, nome);
   } else {
       user = null;
-      sessionStorage.removeItem('chat_uid');
-      sessionStorage.removeItem('chat_email');
-      sessionStorage.removeItem('chat_nome');
+      sessionStorage.clear();
       modal.style.display = 'flex';
       chatDiv.style.display = 'none';
       messagesDiv.innerHTML = '';
@@ -136,7 +134,7 @@ auth.onAuthStateChanged(currentUser => {
   }
 });
 
-loginBtn.addEventListener('click', () => {
+loginBtn.addEventListener('click', async () => {
   console.log('Botão de login clicado:', {
     email: emailInput.value,
     senha: senhaInput.value
@@ -148,32 +146,31 @@ loginBtn.addEventListener('click', () => {
       console.log('Campos obrigatórios não preenchidos.');
       return;
   }
-  console.log('Tentando login com Firebase...');
-  auth.signInWithEmailAndPassword(email, senha)
-      .then(userCredential => {
-          console.log('Login bem-sucedido:', userCredential.user.email);
-          alert('Login bem-sucedido!');
-      })
-      .catch(error => {
-          console.error('Erro no login:', error.code, error.message);
-          switch (error.code) {
-              case 'auth/user-not-found':
-              case 'auth/wrong-password':
-                  alert('Email ou senha incorretos. Verifique suas credenciais ou clique em "Esqueci minha senha".');
-                  break;
-              case 'auth/invalid-email':
-                  alert('Email inválido. Por favor, insira um email válido.');
-                  break;
-              case 'auth/network-request-failed':
-                  alert('Erro de rede. Verifique sua conexão com a internet e tente novamente.');
-                  break;
-              default:
-                  alert(`Erro ao logar: ${error.message}`);
-          }
-      });
+  try {
+      console.log('Tentando login com Firebase...');
+      const userCredential = await auth.signInWithEmailAndPassword(email, senha);
+      console.log('Login bem-sucedido:', userCredential.user.email);
+      alert('Login bem-sucedido!');
+  } catch (error) {
+      console.error('Erro no login:', error.code, error.message);
+      switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+              alert('Email ou senha incorretos. Verifique suas credenciais ou clique em "Esqueci minha senha".');
+              break;
+          case 'auth/invalid-email':
+              alert('Email inválido. Por favor, insira um email válido.');
+              break;
+          case 'auth/network-request-failed':
+              alert('Erro de rede. Verifique sua conexão com a internet e tente novamente.');
+              break;
+          default:
+              alert(`Erro ao logar: ${error.message}`);
+      }
+  }
 });
 
-registerBtn.addEventListener('click', () => {
+registerBtn.addEventListener('click', async () => {
   console.log('Botão de registro clicado:', {
     email: emailInput.value,
     senha: senhaInput.value
@@ -185,34 +182,33 @@ registerBtn.addEventListener('click', () => {
       console.log('Campos obrigatórios não preenchidos.');
       return;
   }
-  console.log('Tentando registro com Firebase...');
-  auth.createUserWithEmailAndPassword(email, senha)
-      .then(userCredential => {
-          console.log('Registro bem-sucedido:', userCredential.user.email);
-          alert('Registro bem-sucedido! Você está logado.');
-      })
-      .catch(error => {
-          console.error('Erro no registro:', error.code, error.message);
-          switch (error.code) {
-              case 'auth/email-already-in-use':
-                  alert('Este email já está em uso. Tente outro email ou faça login.');
-                  break;
-              case 'auth/weak-password':
-                  alert('Senha fraca. A senha deve ter pelo menos 6 caracteres.');
-                  break;
-              case 'auth/invalid-email':
-                  alert('Email inválido. Por favor, insira um email válido.');
-                  break;
-              case 'auth/network-request-failed':
-                  alert('Erro de rede. Verifique sua conexão com a internet e tente novamente.');
-                  break;
-              default:
-                  alert(`Erro ao registrar: ${error.message}`);
-          }
-      });
+  try {
+      console.log('Tentando registro com Firebase...');
+      const userCredential = await auth.createUserWithEmailAndPassword(email, senha);
+      console.log('Registro bem-sucedido:', userCredential.user.email);
+      alert('Registro bem-sucedido! Você está logado.');
+  } catch (error) {
+      console.error('Erro no registro:', error.code, error.message);
+      switch (error.code) {
+          case 'auth/email-already-in-use':
+              alert('Este email já está em uso. Tente outro email ou faça login.');
+              break;
+          case 'auth/weak-password':
+              alert('Senha fraca. A senha deve ter pelo menos 6 caracteres.');
+              break;
+          case 'auth/invalid-email':
+              alert('Email inválido. Por favor, insira um email válido.');
+              break;
+          case 'auth/network-request-failed':
+              alert('Erro de rede. Verifique sua conexão com a internet e tente novamente.');
+              break;
+          default:
+              alert(`Erro ao registrar: ${error.message}`);
+      }
+  }
 });
 
-resetSenhaBtn.addEventListener('click', () => {
+resetSenhaBtn.addEventListener('click', async () => {
   console.log('Botão de redefinição de senha clicado:', emailInput.value);
   const email = emailInput.value.trim();
   if (!email) {
@@ -220,22 +216,21 @@ resetSenhaBtn.addEventListener('click', () => {
       console.log('Campo de email não preenchido.');
       return;
   }
-  console.log('Enviando email de redefinição...');
-  auth.sendPasswordResetEmail(email)
-      .then(() => {
-          console.log('Email de redefinição enviado:', email);
-          alert('Email de redefinição de senha enviado! Verifique sua caixa de entrada.');
-      })
-      .catch(error => {
-          console.error('Erro ao enviar email de redefinição:', error.code, error.message);
-          alert(`Erro ao enviar email de redefinição: ${error.message}`);
-      });
+  try {
+      console.log('Enviando email de redefinição...');
+      await auth.sendPasswordResetEmail(email);
+      console.log('Email de redefinição enviado:', email);
+      alert('Email de redefinição de senha enviado! Verifique sua caixa de entrada.');
+  } catch (error) {
+      console.error('Erro ao enviar email de redefinição:', error.code, error.message);
+      alert(`Erro ao enviar email de redefinição: ${error.message}`);
+  }
 });
 
-logoutBtn.addEventListener('click', () => {
+logoutBtn.addEventListener('click', async () => {
   if (user) {
-      usuariosOnlineRef.child(user.uid).remove();
-      auth.signOut();
+      await usuariosOnlineRef.child(user.uid).remove();
+      await auth.signOut();
       console.log('Logout realizado:', user.email);
   }
 });
