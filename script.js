@@ -1,25 +1,25 @@
+
 console.log('Iniciando script.js...');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w", // **REMOVER EM PRODUÇÃO**
+  apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w",
   authDomain: "chat-publico-742f8.firebaseapp.com",
   databaseURL: "https://chat-publico-742f8-default-rtdb.firebaseio.com",
   projectId: "chat-publico-742f8",
-  storageBucket: "chat-publico-742f8.firebasestorage.app",
+  storageBucket: "chat-publico-742f8.appspot.com",
   messagingSenderId: "1002645903917",
   appId: "1:1002645903917:web:25ada52b6801d0242a36a4"
 };
 
 try {
-  console.log('Inicializando Firebase...');
   firebase.initializeApp(firebaseConfig);
-  console.log('Firebase inicializado com sucesso.');
 } catch (error) {
   console.error('Erro ao inicializar Firebase:', error);
 }
 
 const db = firebase.database();
 const auth = firebase.auth();
+const storage = firebase.storage();
 
 console.log('Elementos do DOM sendo capturados...');
 const form = document.getElementById('form');
@@ -317,6 +317,15 @@ function exibirMensagem(snapshot, isUpdate = false) {
       `;
       conteudo.appendChild(botoesAcao);
     }
+    
+    if (msg.audioUrl) {
+      const audioElement = document.createElement('audio');
+      audioElement.src = msg.audioUrl;
+      audioElement.controls = true;
+      conteudo.appendChild(audioElement);
+    }
+    
+
   }
 
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -453,48 +462,83 @@ temaBtn.addEventListener('click', () => {
 });
 
 aplicarTema(localStorage.getItem('tema') || 'escuro');
+
 let mediaRecorder;
 let audioChunks = [];
+let gravando = false;
+let cancelado = false;
 
 const audioBtn = document.getElementById('audioBtn');
 
-audioBtn.addEventListener('click', async () => {
-  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+audioBtn.addEventListener('mousedown', iniciarGravacao);
+audioBtn.addEventListener('mouseup', pararGravacao);
+audioBtn.addEventListener('mouseleave', cancelarGravacao);
+
+audioBtn.addEventListener('touchstart', iniciarGravacao);
+audioBtn.addEventListener('touchend', pararGravacao);
+audioBtn.addEventListener('touchcancel', cancelarGravacao);
+
+function iniciarGravacao() {
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
 
-    mediaRecorder.ondataavailable = event => {
-      audioChunks.push(event.data);
-    };
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-    mediaRecorder.onstop = async () => {
+    mediaRecorder.onstop = () => {
+      if (cancelado) return;
       const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      // 💡 Para produção: envie para o Firebase Storage e salve o link no Realtime Database
-      mensagensRef.push({
-        uid: user.uid,
-        nome: sessionStorage.getItem('chat_nome'),
-        texto: '',
-        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        audioUrl
-      });
+      enviarAudio(audioBlob);
     };
 
     mediaRecorder.start();
-    audioBtn.textContent = '🔴 Gravando...';
-    setTimeout(() => {
-      mediaRecorder.stop();
-      audioBtn.textContent = '🎤';
-    }, 5000000); // grava até 5 segundos
-  }
-});
-if (msg.audioUrl) {
-  const audioElement = document.createElement('audio');
-  audioElement.src = msg.audioUrl;
-  audioElement.controls = true;
-  conteudo.appendChild(audioElement);
+    gravando = true;
+    cancelado = false;
+    audioBtn.classList.add('gravando');
+  });
 }
-audioBtn.classList.add('gravando');  // enquanto grava
-audioBtn.classList.remove('gravando');  // depois que parar
+
+function pararGravacao() {
+  if (gravando) {
+    gravando = false;
+    mediaRecorder.stop();
+    audioBtn.classList.remove('gravando');
+  }
+}
+
+function cancelarGravacao() {
+  if (gravando) {
+    gravando = false;
+    cancelado = true;
+    mediaRecorder.stop();
+    audioBtn.classList.remove('gravando');
+  }
+}
+
+function enviarAudio(blob) {
+  const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const nomeArquivo = `audios/${user.uid}_${Date.now()}.webm`;
+  const storageRef = storage.ref(nomeArquivo);
+
+  const uploadTask = storageRef.put(blob);
+
+  uploadTask.on(
+    'state_changed',
+    null,
+    error => {
+      console.error('Erro ao enviar áudio:', error);
+      alert('Erro ao enviar áudio.');
+    },
+    () => {
+      uploadTask.snapshot.ref.getDownloadURL().then(url => {
+        mensagensRef.push({
+          uid: user.uid,
+          nome: sessionStorage.getItem('chat_nome'),
+          texto: '',
+          hora,
+          audioUrl: url
+        });
+      });
+    }
+  );
+}
