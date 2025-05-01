@@ -1,25 +1,30 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, push, onValue, update, remove, onChildAdded, onChildChanged, onChildRemoved, set, off } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 console.log('Iniciando script.js...');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w",
-  authDomain: "chat-publico-742f8.firebaseapp.com",
-  databaseURL: "https://chat-publico-742f8-default-rtdb.firebaseio.com",
-  projectId: "chat-publico-742f8",
-  storageBucket: "chat-publico-742f8.appspot.com",
-  messagingSenderId: "1002645903917",
-  appId: "1:1002645903917:web:25ada52b6801d0242a36a4"
+  apiKey: "SUBSTITUA_PELA_SUA_CHAVE_API", // Ex.: "AIzaSyNOVA-CHAVE-API-AQUI"
+  authDomain: "SUBSTITUA_PELO_SEU_AUTH_DOMAIN", // Ex.: "novo-projeto.firebaseapp.com"
+  databaseURL: "SUBSTITUA_PELO_SEU_DATABASE_URL", // Ex.: "https://novo-projeto-default-rtdb.firebaseio.com"
+  projectId: "SUBSTITUA_PELO_SEU_PROJECT_ID", // Ex.: "novo-projeto"
+  storageBucket: "SUBSTITUA_PELO_SEU_STORAGE_BUCKET", // Ex.: "novo-projeto.appspot.com"
+  messagingSenderId: "SUBSTITUA_PELO_SEU_MESSAGING_SENDER_ID", // Ex.: "NOVO-MESSAGING-SENDER-ID"
+  appId: "SUBSTITUA_PELO_SEU_APP_ID" // Ex.: "NOVO-APP-ID"
 };
 
 try {
-  firebase.initializeApp(firebaseConfig);
+  const app = initializeApp(firebaseConfig);
+  console.log('Firebase inicializado com sucesso.');
 } catch (error) {
   console.error('Erro ao inicializar Firebase:', error);
 }
 
-const db = firebase.database();
-const auth = firebase.auth();
-const storage = firebase.storage();
+const db = getDatabase();
+const auth = getAuth();
+const storage = getStorage();
 
 console.log('Elementos do DOM sendo capturados...');
 const form = document.getElementById('form');
@@ -45,9 +50,9 @@ const temaBtn = document.getElementById('temaBtn');
 
 let user = null;
 let salaAtual = salaSelect.value;
-let mensagensRef = db.ref(`mensagens/${salaAtual}`);
-let digitandoRef = db.ref(`digitando/${salaAtual}`);
-const usuariosOnlineRef = db.ref("usuariosOnline");
+let mensagensRef = ref(db, `mensagens/${salaAtual}`);
+let digitandoRef = ref(db, `digitando/${salaAtual}`);
+const usuariosOnlineRef = ref(db, "usuariosOnline");
 
 const popover = document.createElement('div');
 popover.classList.add('popover-nomes');
@@ -110,7 +115,7 @@ toggleSenhaBtn.addEventListener('click', () => {
   icone.alt = isPasswordVisible ? 'Mostrar senha' : 'Ocultar senha';
 });
 
-auth.onAuthStateChanged(currentUser => {
+onAuthStateChanged(auth, currentUser => {
   console.log('Estado de autenticação alterado:', currentUser);
   if (currentUser) {
       user = currentUser;
@@ -121,7 +126,7 @@ auth.onAuthStateChanged(currentUser => {
       sessionStorage.setItem('chat_nome', nome);
       modal.style.display = 'none';
       chatDiv.style.display = 'block';
-      usuariosOnlineRef.child(user.uid).set({ nome: nome });
+      set(ref(db, `usuariosOnline/${user.uid}`), { nome: nome });
       carregarMensagens();
       console.log('Usuário logado:', user.email, nome);
   } else {
@@ -148,7 +153,7 @@ loginBtn.addEventListener('click', async () => {
   }
   try {
       console.log('Tentando login com Firebase...');
-      const userCredential = await auth.signInWithEmailAndPassword(email, senha);
+      const userCredential = await signInWithEmailAndPassword(auth, email, senha);
       console.log('Login bem-sucedido:', userCredential.user.email);
       alert('Login bem-sucedido!');
   } catch (error) {
@@ -184,7 +189,7 @@ registerBtn.addEventListener('click', async () => {
   }
   try {
       console.log('Tentando registro com Firebase...');
-      const userCredential = await auth.createUserWithEmailAndPassword(email, senha);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
       console.log('Registro bem-sucedido:', userCredential.user.email);
       alert('Registro bem-sucedido! Você está logado.');
   } catch (error) {
@@ -218,7 +223,7 @@ resetSenhaBtn.addEventListener('click', async () => {
   }
   try {
       console.log('Enviando email de redefinição...');
-      await auth.sendPasswordResetEmail(email);
+      await sendPasswordResetEmail(auth, email);
       console.log('Email de redefinição enviado:', email);
       alert('Email de redefinição de senha enviado! Verifique sua caixa de entrada.');
   } catch (error) {
@@ -229,25 +234,25 @@ resetSenhaBtn.addEventListener('click', async () => {
 
 logoutBtn.addEventListener('click', async () => {
   if (user) {
-      await usuariosOnlineRef.child(user.uid).remove();
-      await auth.signOut();
+      await remove(ref(db, `usuariosOnline/${user.uid}`));
+      await signOut(auth);
       console.log('Logout realizado:', user.email);
   }
 });
 
 window.addEventListener('beforeunload', () => {
-  if (user) usuariosOnlineRef.child(user.uid).remove();
+  if (user) remove(ref(db, `usuariosOnline/${user.uid}`));
 });
 
 salaSelect.addEventListener('change', () => {
   salaAtual = salaSelect.value;
-  mensagensRef.off();
-  typingRef?.remove();
+  off(mensagensRef);
+  if (typingRef) remove(typingRef);
   messagesDiv.innerHTML = '';
-  mensagensRef = db.ref(`mensagens/${salaAtual}`);
-  digitandoRef.off();
-  digitandoRef = db.ref(`digitando/${salaAtual}`);
-  digitandoRef.on('value', snapshot => {
+  mensagensRef = ref(db, `mensagens/${salaAtual}`);
+  off(digitandoRef);
+  digitandoRef = ref(db, `digitando/${salaAtual}`);
+  onValue(digitandoRef, snapshot => {
       const digitando = snapshot.val();
       const nomes = digitando
           ? Object.keys(digitando)
@@ -274,7 +279,7 @@ function exibirMensagem(snapshot, isUpdate = false) {
 
   if (!isUpdate) {
     const avatarImg = document.createElement('img');
-    avatarImg.src = 'https://cdn-icons-png.flaticon.com/512/6073/6073873.png'; // Substitua por URL real da nova imagem
+    avatarImg.src = 'URL_DA_SUA_IMAGEM'; // Substitua pela URL real da imagem fornecida
     avatarImg.alt = `Avatar de ${msg.nome || 'Usuário'}`;
     avatarImg.classList.add('avatar');
 
@@ -324,8 +329,6 @@ function exibirMensagem(snapshot, isUpdate = false) {
       audioElement.controls = true;
       conteudo.appendChild(audioElement);
     }
-    
-
   }
 
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -349,7 +352,7 @@ function iniciarEdicao(msgDiv, msgKey, textoAtual) {
     if (e.key === 'Enter') {
       const novoTexto = inputEdicao.value.trim();
       if (novoTexto) {
-        mensagensRef.child(msgKey).update({
+        update(ref(db, `mensagens/${salaAtual}/${msgKey}`), {
           texto: sanitizar(novoTexto),
           hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }).then(() => {
@@ -365,7 +368,7 @@ function iniciarEdicao(msgDiv, msgKey, textoAtual) {
 
 function apagarMensagem(msgKey) {
   if (confirm('Tem certeza que deseja apagar esta mensagem?')) {
-    mensagensRef.child(msgKey).remove()
+    remove(ref(db, `mensagens/${salaAtual}/${msgKey}`))
       .then(() => {
         console.log('Mensagem apagada:', msgKey);
       })
@@ -377,9 +380,9 @@ function apagarMensagem(msgKey) {
 }
 
 function carregarMensagens() {
-  mensagensRef.limitToLast(50).on('child_added', snapshot => exibirMensagem(snapshot));
-  mensagensRef.on('child_changed', snapshot => exibirMensagem(snapshot, true));
-  mensagensRef.on('child_removed', snapshot => {
+  onChildAdded(ref(db, `mensagens/${salaAtual}`), snapshot => exibirMensagem(snapshot), { onlyLast: 50 });
+  onChildChanged(ref(db, `mensagens/${salaAtual}`), snapshot => exibirMensagem(snapshot, true));
+  onChildRemoved(ref(db, `mensagens/${salaAtual}`), snapshot => {
     const msgKey = snapshot.key;
     const msgDiv = document.querySelector(`.mensagem[data-key="${msgKey}"]`);
     if (msgDiv) msgDiv.remove();
@@ -397,7 +400,7 @@ form.addEventListener('submit', e => {
   }
 
   if (texto && user) {
-      mensagensRef.push({
+      push(ref(db, `mensagens/${salaAtual}`), {
           uid: user.uid,
           nome: sessionStorage.getItem('chat_nome'),
           texto: sanitizar(texto),
@@ -411,7 +414,7 @@ usuariosOnline.addEventListener('click', () => {
   popover.style.display = popover.style.display === 'block' ? 'none' : 'block';
 });
 
-usuariosOnlineRef.on('value', snapshot => {
+onValue(usuariosOnlineRef, snapshot => {
   const online = snapshot.val();
   const nomes = online
       ? Object.keys(online)
@@ -426,10 +429,10 @@ usuariosOnlineRef.on('value', snapshot => {
 function atualizarDigitando() {
   if (!user) return;
   clearTimeout(typingTimeout);
-  typingRef?.remove();
-  typingRef = db.ref(`digitando/${salaAtual}/${user.uid}`);
-  typingRef.set(sessionStorage.getItem('chat_nome'));
-  typingTimeout = setTimeout(() => typingRef.remove(), 3000);
+  if (typingRef) remove(typingRef);
+  typingRef = ref(db, `digitando/${salaAtual}/${user.uid}`);
+  set(typingRef, sessionStorage.getItem('chat_nome'));
+  typingTimeout = setTimeout(() => remove(typingRef), 3000);
 }
 
 input.addEventListener('input', atualizarDigitando);
@@ -495,6 +498,9 @@ function iniciarGravacao() {
     gravando = true;
     cancelado = false;
     audioBtn.classList.add('gravando');
+  }).catch(error => {
+    console.error('Erro ao acessar o microfone:', error);
+    alert('Não foi possível acessar o microfone. Verifique as permissões.');
   });
 }
 
@@ -518,27 +524,20 @@ function cancelarGravacao() {
 function enviarAudio(blob) {
   const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const nomeArquivo = `audios/${user.uid}_${Date.now()}.webm`;
-  const storageRef = storage.ref(nomeArquivo);
+  const storageReference = storageRef(storage, nomeArquivo);
 
-  const uploadTask = storageRef.put(blob);
-
-  uploadTask.on(
-    'state_changed',
-    null,
-    error => {
-      console.error('Erro ao enviar áudio:', error);
-      alert('Erro ao enviar áudio.');
-    },
-    () => {
-      uploadTask.snapshot.ref.getDownloadURL().then(url => {
-        mensagensRef.push({
-          uid: user.uid,
-          nome: sessionStorage.getItem('chat_nome'),
-          texto: '',
-          hora,
-          audioUrl: url
-        });
+  uploadBytes(storageReference, blob).then(snapshot => {
+    getDownloadURL(snapshot.ref).then(url => {
+      push(ref(db, `mensagens/${salaAtual}`), {
+        uid: user.uid,
+        nome: sessionStorage.getItem('chat_nome'),
+        texto: '',
+        hora,
+        audioUrl: url
       });
-    }
-  );
+    });
+  }).catch(error => {
+    console.error('Erro ao enviar áudio:', error);
+    alert('Erro ao enviar áudio.');
+  });
 }
