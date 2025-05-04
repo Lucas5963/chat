@@ -6,13 +6,13 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "http
 console.log('Iniciando script.js...');
 
 const firebaseConfig = {
-  apiKey: "SUBSTITUA_PELA_SUA_CHAVE_API", // Ex.: "AIzaSyNOVA-CHAVE-API-AQUI"
-  authDomain: "SUBSTITUA_PELO_SEU_AUTH_DOMAIN", // Ex.: "novo-projeto.firebaseapp.com"
-  databaseURL: "SUBSTITUA_PELO_SEU_DATABASE_URL", // Ex.: "https://novo-projeto-default-rtdb.firebaseio.com"
-  projectId: "SUBSTITUA_PELO_SEU_PROJECT_ID", // Ex.: "novo-projeto"
-  storageBucket: "SUBSTITUA_PELO_SEU_STORAGE_BUCKET", // Ex.: "novo-projeto.appspot.com"
-  messagingSenderId: "SUBSTITUA_PELO_SEU_MESSAGING_SENDER_ID", // Ex.: "NOVO-MESSAGING-SENDER-ID"
-  appId: "SUBSTITUA_PELO_SEU_APP_ID" // Ex.: "NOVO-APP-ID"
+ apiKey: "AIzaSyBc1H4dDL56w70sjCGYDZ5GApv-b845C9w",
+  authDomain: "chat-publico-742f8.firebaseapp.com",
+  databaseURL: "https://chat-publico-742f8-default-rtdb.firebaseio.com",
+  projectId: "chat-publico-742f8",
+  storageBucket: "chat-publico-742f8.firebasestorage.app",
+  messagingSenderId: "1002645903917",
+  appId: "1:1002645903917:web:9aa38a7b63b279fa2a36a4"
 };
 
 try {
