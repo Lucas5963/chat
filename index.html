@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MEU CHAT</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="facebook-theme">
+  <div id="consentBanner" style="display: none;">
+    <p>Este site coleta seu email para autenticação. Concorda com o uso desses dados?</p>
+    <button onclick="aceitarConsentimento()">Aceitar</button>
+  </div>
+
+  <div id="modal-login" class="modal" role="dialog" aria-labelledby="modal-title">
+    <div class="modal-conteudo">
+      <h3 id="modal-title">Bem-vindo ao CHAT</h3>
+      <form id="loginForm" aria-label="Formulário de login e registro">
+        <input
+          type="email"
+          id="emailInput"
+          placeholder="Digite seu email"
+          required
+          pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+          aria-describedby="emailHelp"
+        />
+        <span id="emailHelp" class="sr-only">Digite um email válido</span>
+        <div class="password-container">
+          <input
+            type="password"
+            id="senhaInput"
+            placeholder="Digite sua senha"
+            required
+            aria-describedby="senhaHelp"
+          />
+          <span id="senhaHelp" class="sr-only">Digite sua senha</span>
+          <button
+            id="toggleSenhaBtn"
+            type="button"
+            class="icone-senha"
+            aria-label="Mostrar ou ocultar senha"
+          >
+            <img
+              id="iconeOlho"
+              src="https://cdn-icons-png.flaticon.com/512/709/709612.png"
+              alt="Mostrar senha"
+            />
+          </button>
+          <ul id="passwordChecklist" class="password-checklist">
+            <li id="req-length" class="invalido">Pelo menos 6 caracteres</li>
+            <li id="req-uppercase" class="invalido">Pelo menos 1 letra maiúscula</li>
+            <li id="req-numeric" class="invalido">Pelo menos 1 número</li>
+            <li id="req-special" class="invalido">Pelo menos 1 caractere especial</li>
+          </ul>
+        </div>
+        <div id="errorMessage" class="error-message" style="display: none; color: red;"></div>
+        <button id="loginBtn" type="submit">Entrar</button>
+        <button id="registerBtn" type="button">Registrar</button>
+        <button id="resetSenhaBtn" type="button">Esqueci minha senha</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="chat" style="display: none;">
+    <h2>💬 Chat 2.0</h2>
+    <div class="sala-container" data-theme="escuro">
+      <div class="select-wrapper">
+        <strong>Sala:</strong>
+        <label for="salaSelect" class="sr-only">Selecione uma sala de chat</label>
+        <select id="salaSelect" aria-describedby="salaSelectHelp">
+          <option value="geral">Geral</option>
+          <option value="suporte">Sala Exclusiva 1</option>
+          <option value="aleatorio">Sala Exclusiva 2</option>
+        </select>
+      </div>
+      <span id="salaSelectHelp" class="sr-only">Escolha uma sala para conversar</span>
+    </div>
+    <div id="usuariosOnline"><strong>Online:</strong> <span id="listaUsuarios"></span></div>
+    <button id="logoutBtn">Sair</button>
+    <div id="errorMessageChat" class="error-message" style="display: none; color: red;"></div>
+    <div id="messages"></div>
+    <div id="digitando" class="digitando"></div>
+    <form id="form">
+      <input id="input" type="text" placeholder="Digite sua mensagem... 😊" required />
+      <button id="send" type="submit">Enviar</button>
+      <button type="button" id="emojiBtn">😊</button>
+      <button id="temaBtn">🌓 Trocar Tema</button>
+    </form>
+    <div id="emojiPicker" class="emoji-picker" style="display: none;"></div>
+  </div>
+
+  <audio id="notificacaoAudio" src="https://notificationsounds.com/storage/sounds/file-sounds-1156-pristine.mp3" preload="auto"></audio>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
